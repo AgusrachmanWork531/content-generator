@@ -53,7 +53,7 @@ def cleanup_expired_files():
 
 import asyncio
 from app.services.google_sheets import google_sheets_service
-from app.services.clip_processor import process_clip_request
+from app.services.clip_processor import process_clip_v3
 from app.schemas.clip import ClipDownloadRequest
 
 async def _process_pending_sheets_rows():
@@ -93,14 +93,14 @@ async def _process_pending_sheets_rows():
             )
             
             # Process the clip
-            result = await process_clip_request(request)
+            result = await process_clip_v3(request)
             
-            if result.status == "success":
+            if result.get("status") == "success":
                 # Mark as done in Sheets
                 google_sheets_service.mark_as_done(row['row_index'])
                 logger.info(f"Successfully processed and marked row {row['row_index']} as DONE.")
             else:
-                logger.error(f"Failed to process row {row['row_index']}: {result.message}")
+                logger.error(f"Failed to process row {row['row_index']}: {result.get('message', 'Unknown error')}")
                 
         except Exception as e:
             logger.error(f"Error processing Sheets row {row.get('row_index')}: {e}")

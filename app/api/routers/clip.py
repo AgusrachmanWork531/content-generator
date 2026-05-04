@@ -22,7 +22,7 @@ from app.services.youtube import download_youtube_clip, crop_video, _parse_time_
 from app.services.youtube_upload import upload_short
 import re
 
-from app.services.clip_processor import process_clip_request
+from app.services.clip_processor import process_clip_v3
 from app.services.compilation_processor import compilation_processor
 from app.services.google_sheets import google_sheets_service
 from app.core.tasks import _process_pending_sheets_rows
@@ -76,7 +76,7 @@ async def download_clip(requests: List[ClipDownloadRequest], background_tasks: B
     # We process them sequentially in the loop for this endpoint
     for request in requests:
         try:
-            result = await process_clip_request(request)
+            result = await process_clip_v3(request)
             results.append(result)
         except Exception as e:
             logger.error(f"Error processing {request.url}: {e}")

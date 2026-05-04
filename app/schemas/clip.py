@@ -23,6 +23,7 @@ class ClipDownloadRequest(BaseModel):
     row_index: Optional[int] = None               # Original row index from Google Sheets
     anti_bot_vfx: bool = True                    # If True, adds subtle zoom/color shifts
     satisfying: bool = False                      # If True, adds B-roll split screen
+    auto_split: bool = False                      # If True, auto-pick best 15-60s segment
 
 class ClipItemResponse(BaseModel):
     status: str

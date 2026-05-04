@@ -1,270 +1,365 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/app/schemas/clip.py b/app/schemas/clip.py
+index a4014d5..5d5f6e7 100644
+--- a/app/schemas/clip.py
++++ b/app/schemas/clip.py
+@@ -23,6 +23,7 @@ class ClipDownloadRequest(BaseModel):
+     row_index: Optional[int] = None               # Original row index from Google Sheets
+     anti_bot_vfx: bool = True                    # If True, adds subtle zoom/color shifts
+     satisfying: bool = False                      # If True, adds B-roll split screen
++    auto_split: bool = False                      # If True, auto-pick best 15-60s segment
+ 
+ class ClipItemResponse(BaseModel):
+     status: str
+diff --git a/app/services/clip_processor.py b/app/services/clip_processor.py
+index 5e606e6..f93bd5b 100644
+--- a/app/services/clip_processor.py
++++ b/app/services/clip_processor.py
+@@ -8,6 +8,7 @@ from app.services.subtitle import subtitle_service
+ from app.services.youtube_upload import upload_short
+ from app.services.google_sheets import mark_row_done
+ from app.services.opening_narrator import generate_opening_video, merge_opening_and_short
++from app.services.intelligent_splitter import IntelligentSplitter
+ from app.core.config import settings
+ from app.schemas.clip import ClipDownloadRequest, ClipItemResponse
+ 
+@@ -52,6 +53,23 @@ async def process_clip_request(request: ClipDownloadRequest) -> ClipItemResponse
+             merged_path = os.path.join(settings.TMP_DIR, f"merged_{output_file_id}.mp4")
+             final_path = concat_segments(seg_paths, merged_path)
+             intermediate_files.append(merged_path)
++        elif request.auto_split and not request.start_time and not request.end_time:
++            logger.info(f"[{output_file_id}] Intelligent auto-split enabled. Selecting best segment...")
++            transcript = None
++            try:
++                from app.services.youtube_transcript import youtube_transcript_service
++                transcript = youtube_transcript_service.get_transcript(request.url)
++            except Exception as te:
++                logger.warning(f"[{output_file_id}] Transcript fetch failed, fallback to AV-only split: {te}")
++
++            splitter = IntelligentSplitter(step_sec=0.1)
++            best = splitter.find_best_segment(full_video_path, transcript=transcript)
++            logger.info(f"[{output_file_id}] Best segment: {best.start:.2f}s - {best.end:.2f}s (score={best.score:.3f})")
++            crop_id = f"crop_{output_file_id}.mp4"
++            crop_path = os.path.join(settings.TMP_DIR, crop_id)
++            crop_video(full_video_path, crop_path, best.start, best.end)
++            final_path = crop_path
++            intermediate_files.append(crop_path)
+         else:
+             # Traditional single crop
+             crop_id = f"crop_{output_file_id}.mp4"
 diff --git a/app/services/clipper_engine.py b/app/services/clipper_engine.py
-index 12724d0e631c19ac38a495040b697ed986580098..d817c0a589dfdb3199b019b5e7e8fc4e80e38fc1 100644
+index a1b2c3d..e4f5g6h 100644
 --- a/app/services/clipper_engine.py
 +++ b/app/services/clipper_engine.py
-@@ -97,167 +97,223 @@ class ClipperEngine:
-         target_mode = "split" if dist > 0.5 else "focus"
-         
-         # 2. Hysteresis Check
+@@ -1,11 +1,15 @@
+ import os
+ import cv2
+ import random
+ import mediapipe as mp
+ import numpy as np
+ import ffmpeg
+ import subprocess
+ import logging
++import supervision as sv
+ from typing import List, Tuple, Optional, Dict
+ from app.services.audio_analyzer import get_audio_energy_map
++from app.services.vad_service import build_speech_timeline, compute_turn_taking_score
++from app.services.cpd_service import find_split_boundaries
+ 
+ logger = logging.getLogger(__name__)
+@@ -51,6 +55,10 @@ class ClipperEngine:
+             except Exception as e:
+                 logger.error(f"YOLO Load Error: {e}")
++        
++        # ByteTrack Stability
++        self.tracker = sv.ByteTrack()
++        self.track_history = {} # track_id -> last_known_x
+ 
+     def _detect_hw_encoder(self) -> str:
+@@ -65,33 +73,43 @@ class ClipperEngine:
+-    def get_split_centers(self, frame_bgr) -> Tuple[float, float, int]:
+-        """Returns leftmost and rightmost X coordinates for Top-Bottom Split Screen"""
++    def get_split_centers(self, frame_bgr) -> Tuple[float, float, int, float]:
++        """Returns leftmost and rightmost X coordinates + face_count + avg bbox width (normalized)."""
+         height, width, _ = frame_bgr.shape
+         rgb_frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+-        faces_x = []
++        persons = []  # List of (x_center, bbox_width_norm)
+ 
+         if self.detector:
+             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+             res = self.detector.detect(mp_image)
+             if res.detections:
+                 for detection in res.detections:
+                     bbox = detection.bounding_box
+-                    faces_x.append(float((bbox.origin_x + bbox.width / 2) / width))
+-
+-        if not faces_x and getattr(self, 'yolo_model', None):
++                    cx = float((bbox.origin_x + bbox.width / 2) / width)
++                    bw = float(bbox.width / width)
++                    persons.append((cx, bw))
++
++        if not persons and getattr(self, 'yolo_model', None):
+             results = self.yolo_model.predict(frame_bgr, classes=[0], conf=0.35, verbose=False)
+             if results and len(results[0].boxes) > 0:
+-                boxes = results[0].boxes.xyxy.cpu().numpy()
+-                for box in boxes:
+-                    faces_x.append(float((box[0] + box[2]) / 2 / width))
+-
+-        if not faces_x: return (0.5, 0.5, 0)
+-        if len(faces_x) == 1: return (faces_x[0], faces_x[0], 1)
+-        
+-        faces_x.sort()
+-        return (faces_x[0], faces_x[-1], len(faces_x))
+-
+-    def decide_layout(self, x_top: float, x_bot: float, face_count: int, last_mode: str, state_duration: float) -> str:
+-        """Intelligence Decision Engine for Layout Selection"""
++                # Convert to supervision detections for tracking
++                detections = sv.Detections.from_ultralytics(results[0])
++                detections = self.tracker.update_with_detections(detections)
++                
++                for i in range(len(detections)):
++                    box = detections.xyxy[i]
++                    track_id = detections.tracker_id[i] if detections.tracker_id is not None else i
++                    cx = float((box[0] + box[2]) / 2 / width)
++                    bw = float((box[2] - box[0]) / width)
++                    persons.append((cx, bw))
++                    self.track_history[track_id] = cx
++
++        if not persons: return (0.5, 0.5, 0, 0.0)
++        if len(persons) == 1: return (persons[0][0], persons[0][0], 1, persons[0][1])
++        
++        persons.sort(key=lambda p: p[0])
++        avg_bw = sum(p[1] for p in persons) / len(persons)
++        return (persons[0][0], persons[-1][0], len(persons), avg_bw)
++
++    def decide_layout(self, x_top: float, x_bot: float, face_count: int, avg_bbox_w: float, audio_conf: float, last_mode: str, state_duration: float) -> str:
++        """Intelligence Decision Engine for Layout Selection with Audio-Visual Validation."""
+         if face_count < 2:
+             return "focus"
+-            
++        
+         dist = abs(x_top - x_bot)
+-        MIN_STATE_DURATION = 3.0 # Hysteresis: Stay in mode for at least 3s
+-        
+-        # 1. Proximity Thresholds
+-        target_mode = "split" if dist > 0.4 else "focus" # Slightly lower dist threshold for 2-face scenario
+-        
+-        # 2. Hysteresis Check
++        MIN_STATE_DURATION = 3.0
++        
++        # Audio-Enhanced Overlap Guard
++        separation_multiplier = 1.0
++        if audio_conf > 0.6:
++            separation_multiplier = 0.85 # More lenient
++        elif audio_conf < 0.2:
++            separation_multiplier = 1.4  # More strict
++            
++        min_separation = max(0.25, avg_bbox_w * 1.5) * separation_multiplier
++        
++        if dist < min_separation:
++            return "focus"
++        
++        # Audio-based Trigger Threshold
++        split_threshold = 0.35 if audio_conf > 0.4 else 0.45
++        target_mode = "split" if dist > split_threshold else "focus"
++        
          if state_duration < MIN_STATE_DURATION:
              return last_mode
              
          return target_mode
- 
-     def analyze_video(self, video_path: str):
-         cap = cv2.VideoCapture(video_path)
-         fps = 30
-         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-         
-         metadata = []
-         frame_idx = 0
-         last_x_top, last_x_bot = 0.5, 0.5
-         last_mode = "focus"
-         state_start_time = 0.0
-         last_frame_gray = None
-         DEAD_ZONE = 0.05
-         
-         logger.info(f"Starting Phase 2 AI Forensic Analysis: {video_path}")
-         
-+        sample_interval = 1  # per-frame sampling for temporal consistency
-+        history_len = max(5, min(10, int(fps // 3)))
-+        min_detection_delta = 0.01
-+        velocity_alpha = 0.3
-+        max_velocity = 0.06  # normalized x per frame
-+        hold_frames_on_drop = max(5, int(fps * 0.25))
-+        top_hist: List[float] = [0.5]
-+        bot_hist: List[float] = [0.5]
-+        vel_top = 0.0
-+        vel_bot = 0.0
-+        lost_counter = 0
-+
-         while True:
-             ret, frame = cap.read()
-             if not ret: break
-             
--            if frame_idx % int(fps) == 0:
-+            if frame_idx % sample_interval == 0:
-                 current_time = frame_idx / fps
-                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                 
-                 # Motion Scoring
-                 motion_score = 0.0
-                 if last_frame_gray is not None:
-                     diff = cv2.absdiff(gray, last_frame_gray)
-                     motion_score = np.mean(diff) / 255.0
-                 last_frame_gray = gray
-                 
-                 # Dual Tracking
--                x_top, x_bot = self.get_split_centers(frame)
--                
--                if abs(x_top - last_x_top) < DEAD_ZONE: x_top = last_x_top
--                if abs(x_bot - last_x_bot) < DEAD_ZONE: x_bot = last_x_bot
-+                raw_top, raw_bot = self.get_split_centers(frame)
-+                detection_valid = not (abs(raw_top - 0.5) < 1e-6 and abs(raw_bot - 0.5) < 1e-6)
-+
-+                if not detection_valid:
-+                    lost_counter += 1
-+                else:
-+                    lost_counter = 0
-+
-+                if detection_valid:
-+                    if abs(raw_top - last_x_top) < min_detection_delta:
-+                        raw_top = last_x_top
-+                    if abs(raw_bot - last_x_bot) < min_detection_delta:
-+                        raw_bot = last_x_bot
-+                elif lost_counter <= hold_frames_on_drop:
-+                    raw_top, raw_bot = last_x_top, last_x_bot
-+                else:
-+                    raw_top = last_x_top + vel_top
-+                    raw_bot = last_x_bot + vel_bot
-+
-+                top_hist.append(raw_top)
-+                bot_hist.append(raw_bot)
-+                top_hist = top_hist[-history_len:]
-+                bot_hist = bot_hist[-history_len:]
-+                avg_top = float(np.mean(top_hist))
-+                avg_bot = float(np.mean(bot_hist))
-+
-+                pred_top = last_x_top + vel_top
-+                pred_bot = last_x_bot + vel_bot
-+                target_top = (0.6 * avg_top) + (0.4 * pred_top)
-+                target_bot = (0.6 * avg_bot) + (0.4 * pred_bot)
-+
-+                step_top = np.clip(target_top - last_x_top, -max_velocity, max_velocity)
-+                step_bot = np.clip(target_bot - last_x_bot, -max_velocity, max_velocity)
-+                x_top = float(np.clip(last_x_top + step_top, 0.0, 1.0))
-+                x_bot = float(np.clip(last_x_bot + step_bot, 0.0, 1.0))
-+
-+                vel_top = (velocity_alpha * step_top) + ((1 - velocity_alpha) * vel_top)
-+                vel_bot = (velocity_alpha * step_bot) + ((1 - velocity_alpha) * vel_bot)
-                 
-                 # ── Phase 2: Decision Engine ──
-                 current_mode = self.decide_layout(x_top, x_bot, last_mode, current_time - state_start_time)
-                 if current_mode != last_mode:
-                     state_start_time = current_time
-                     last_mode = current_mode
-                 
-                 last_x_top, last_x_bot = x_top, x_bot
-                 importance = min(1.0, (motion_score * 5.0) + 0.5) 
-                 
-                 metadata.append({
-                     "time": current_time,
-                     "x_top": float(x_top),
-                     "x_bot": float(x_bot),
-                     "layout_mode": current_mode,
-                     "importance": float(importance),
-                     "is_peak": importance > 0.8
-                 })
-             
-             frame_idx += 1
-             if frame_idx >= total_frames: break
-                 
-         cap.release()
-         return metadata, fps, width, height
- 
-     def smooth_centers(self, metadata: List[Dict]):
-         if not metadata: return []
-         smooth_f = 0.15
-         smoothed = [m.copy() for m in metadata]
-         for i in range(1, len(metadata)):
-             smoothed[i]['x_top'] = smooth_f * metadata[i]['x_top'] + (1 - smooth_f) * smoothed[i-1]['x_top']
-             smoothed[i]['x_bot'] = smooth_f * metadata[i]['x_bot'] + (1 - smooth_f) * smoothed[i-1]['x_bot']
-         return smoothed
- 
-+    def _build_ease_expr(self, metadata: List[Dict], crop_w: int, original_width: int, target: str) -> str:
-+        if not metadata:
-+            return str(max(0, (original_width - crop_w) / 2))
-+
-+        expr_parts = []
-+        for i in range(len(metadata) - 1):
-+            curr = metadata[i]
-+            nxt = metadata[i + 1]
-+            t_s, t_e = curr['time'], nxt['time']
-+            dt = max(1e-6, t_e - t_s)
-+
-+            if target == 'focus':
-+                c_curr = (curr['x_top'] + curr['x_bot']) / 2
-+                c_next = (nxt['x_top'] + nxt['x_bot']) / 2
+
+-    def _compute_audio_split_confidence(self, energy_map: np.ndarray, current_time: float, window: float = 3.0) -> float:
+-        """Calculates confidence that a dialogue is happening based on audio patterns."""
+-        start_idx = max(0, int((current_time - window) / 0.1))
+-        end_idx = int(current_time / 0.1)
+-        segment = energy_map[start_idx:end_idx]
+-        
+-        if len(segment) < 10: return 0.5 # Neutral
+-        
+-        # 1. Turn-taking detection (zero-crossing around median)
+-        threshold = np.median(segment)
+-        crossings = np.sum(np.diff(segment > threshold))
+-        turn_score = min(1.0, crossings / 12.0) # ~12 crossings in 3s is typical for active banter
+-        
+-        # 2. Variance (High variance often indicates alternating speakers/dynamic dialogue)
+-        variance = np.var(segment)
+-        var_score = min(1.0, variance / 0.008)
+-        
+-        # 3. Peak density (Dialogue has more frequent bursts than steady monolog)
+-        peaks = np.sum(segment > (np.mean(segment) * 1.5))
+-        peak_score = min(1.0, peaks / 8.0)
+-        
+-        return float(0.5 * turn_score + 0.3 * var_score + 0.2 * peak_score)
++    def _compute_audio_split_confidence(self, energy_map: np.ndarray, current_time: float, speech_tl: np.ndarray = None, turn_tl: np.ndarray = None, window: float = 3.0) -> float:
++        """
++        Calculates confidence that a dialogue is happening.
++        Uses Silero VAD speech timeline + turn-taking if available,
++        falls back to energy-based heuristic otherwise.
++        """
++        start_idx = max(0, int((current_time - window) / 0.1))
++        end_idx = int(current_time / 0.1)
++        
++        # --- VAD-Enhanced Path (Silero) ---
++        if speech_tl is not None and len(speech_tl) > end_idx and end_idx > start_idx:
++            speech_seg = speech_tl[start_idx:end_idx]
++            turn_seg = turn_tl[start_idx:end_idx] if turn_tl is not None and len(turn_tl) > end_idx else None
++            
++            if len(speech_seg) < 5:
++                return 0.5
++            
++            # 1. Speech density (how much of the window has speech)
++            speech_density = float(np.mean(speech_seg))
++            
++            # 2. Turn-taking score (from VAD-derived transitions)
++            if turn_seg is not None:
++                turn_score = float(np.mean(turn_seg))
 +            else:
-+                c_curr = curr[target]
-+                c_next = nxt[target]
++                transitions = np.sum(np.abs(np.diff(speech_seg)))
++                turn_score = min(1.0, transitions / 8.0)
++            
++            # 3. Energy variance within speech regions
++            energy_seg = energy_map[start_idx:end_idx] if end_idx <= len(energy_map) else energy_map[start_idx:]
++            if len(energy_seg) > 0:
++                var_score = min(1.0, float(np.var(energy_seg)) / 0.006)
++            else:
++                var_score = 0.0
++            
++            # Weighted combination
++            return float(0.35 * speech_density + 0.40 * turn_score + 0.25 * var_score)
++        
++        # --- Fallback: Energy-only Path ---
++        segment = energy_map[start_idx:end_idx]
++        if len(segment) < 10:
++            return 0.5
++        
++        threshold = np.median(segment)
++        crossings = np.sum(np.diff(segment > threshold))
++        turn_score = min(1.0, crossings / 12.0)
++        variance = np.var(segment)
++        var_score = min(1.0, variance / 0.008)
++        peaks = np.sum(segment > (np.mean(segment) * 1.5))
++        peak_score = min(1.0, peaks / 8.0)
++        
++        return float(0.5 * turn_score + 0.3 * var_score + 0.2 * peak_score)
+
+     def analyze_video(self, video_path: str):
+@@ -118,7 +155,24 @@ class ClipperEngine:
+-        logger.info(f"Starting Phase 2 AI Forensic Analysis: {video_path}")
++        logger.info(f"Starting Phase 3 AI Forensic Analysis: {video_path}")
+         
+         # Audio Energy Mapping
+         energy_map = get_audio_energy_map(video_path)
++        
++        # Silero VAD Speech Timeline (replaces RMS heuristic)
++        video_duration = total_frames / fps
++        speech_timeline = build_speech_timeline(video_path, step_sec=0.1, duration=video_duration)
++        turn_taking = compute_turn_taking_score(speech_timeline, window_steps=30)
++        logger.info(f"[VAD] Speech timeline: {np.sum(speech_timeline > 0)} active steps / {len(speech_timeline)} total")
++        
++        # CPD Natural Boundaries (ruptures PELT)
++        energy_arr = np.array(energy_map, dtype=np.float32)
++        natural_boundaries = find_split_boundaries(
++            importance_score=energy_arr,
++            speech_timeline=speech_timeline,
++            step_sec=0.1,
++            penalty=10.0,
++            min_segment_sec=8.0
++        )
++        logger.info(f"[CPD] Natural split boundaries: {[f'{b:.1f}s' for b in natural_boundaries]}")
+         
+         sample_interval = 1  # per-frame sampling for temporal consistency
+@@ -204,5 +258,8 @@ class ClipperEngine:
+-                audio_conf = self._compute_audio_split_confidence(np.array(energy_map), current_time)
++                audio_conf = self._compute_audio_split_confidence(
++                    np.array(energy_map), current_time,
++                    speech_tl=speech_timeline, turn_tl=turn_taking
++                )
+                 
+-                current_mode = self.decide_layout(x_top, x_bot, stable_face_count, last_mode, current_time - state_start_time)
++                current_mode = self.decide_layout(
++                    x_top, x_bot, 
++                    stable_face_count, 
++                    last_avg_bbox_w, 
++                    audio_conf,
++                    last_mode, 
++                    current_time - state_start_time
++                )
+diff --git a/app/services/intelligent_splitter.py b/app/services/intelligent_splitter.py
+index a1b2c3d..e4f5g6h 100644
+--- a/app/services/intelligent_splitter.py
++++ b/app/services/intelligent_splitter.py
+@@ -82,17 +82,30 @@ class IntelligentSplitter:
+         visual = self._visual_activity(video_path, target_steps)
+         text = self._transcript_importance(transcript, target_steps)
+ 
+-        # speech proxy from energy dynamics (VAD-lite)
+-        speech = (energy > np.percentile(energy, 45)).astype(np.float32)
++        # Speech timeline from Silero VAD (falls back to energy proxy if unavailable)
++        try:
++            from app.services.vad_service import build_speech_timeline
++            speech = build_speech_timeline(video_path, step_sec=self.step_sec, duration=target_steps * self.step_sec)
++            if len(speech) < target_steps:
++                speech = np.pad(speech, (0, target_steps - len(speech)), mode="edge")
++            speech = speech[:target_steps]
++        except Exception:
++            speech = (energy > np.percentile(energy, 45)).astype(np.float32)
 +
-+            p_curr = max(0, min(original_width - crop_w, c_curr * original_width - crop_w / 2))
-+            p_next = max(0, min(original_width - crop_w, c_next * original_width - crop_w / 2))
-+            delta = p_next - p_curr
-+            nt = f"((t-{t_s:.3f})/{dt:.6f})"
-+            ease = f"(3*pow({nt},2)-2*pow({nt},3))"  # smoothstep ease-in-out
-+            gate = f"gte(t,{t_s:.3f})*lt(t,{t_e:.3f})"
-+            expr_parts.append(f"(({p_curr:.3f})+({delta:.3f})*{ease})*{gate}")
+         context_shift = np.abs(np.diff(text, prepend=text[0]))
+ 
+-        score = (
+-            0.22 * self._z(energy)
+-            + 0.18 * self._z(speech)
+-            + 0.30 * self._z(text + 1e-3)
+-            + 0.20 * self._z(visual + 1e-3)
+-            + 0.10 * self._z(context_shift + 1e-3)
+-        )
++        # Use CPD-enhanced importance scoring if available
++        try:
++            from app.services.cpd_service import build_importance_score
++            score = build_importance_score(energy, speech, visual, text)
++        except Exception:
++            score = (
++                0.22 * self._z(energy)
++                + 0.18 * self._z(speech)
++                + 0.30 * self._z(text + 1e-3)
++                + 0.20 * self._z(visual + 1e-3)
++                + 0.10 * self._z(context_shift + 1e-3)
++            )
+diff --git a/app/services/vad_service.py b/app/services/vad_service.py
+new file mode 100644
+index 0000000..f9b8076
+--- /dev/null
++++ b/app/services/vad_service.py
+@@ -0,0 +1,100 @@
++import logging
++import subprocess
++import tempfile
++import os
++import numpy as np
 +
-+        last = metadata[-1]
-+        if target == 'focus':
-+            c_last = (last['x_top'] + last['x_bot']) / 2
-+        else:
-+            c_last = last[target]
++logger = logging.getLogger(__name__)
++... (Isi vad_service.py)
++diff --git a/app/services/cpd_service.py b/app/services/cpd_service.py
++new file mode 100644
++index 0000000..f9b8076
++--- /dev/null
+++++ b/app/services/cpd_service.py
++@@ -0,0 +1,120 @@
++import logging
++import numpy as np
++... (Isi cpd_service.py)
++diff --git a/requirements.txt b/requirements.txt
++index a1b2c3d..e4f5g6h 100644
++--- a/requirements.txt
+++++ b/requirements.txt
++@@ -18,3 +18,6 @@ static-ffmpeg
++ scenedetect
++ edge-tts
+++silero-vad-lite
+++ruptures
+++supervision
 +
-+        p_last = max(0, min(original_width - crop_w, c_last * original_width - crop_w / 2))
-+        expr_parts.append(f"({p_last:.3f})*gte(t,{last['time']:.3f})")
++EOF
++)
 +
-+        return " + ".join(expr_parts)
-+
-     def render(self, input_path: str, output_path: str, metadata: List[Dict], original_width: int, original_height: int, title: str = None, ass_path: str = None, anti_bot_vfx: bool = True, use_broll: bool = False):
-         """
-         Phase 2 Dynamic Render Engine:
-         - Detects layout_mode changes
-         - Toggles between Single Focus and Split Screen
-         """
-         hw_encoder = self._detect_hw_encoder()
-         stream = ffmpeg.input(input_path)
-         
-         v_std = stream.video.filter('fps', fps=30).filter('setpts', 'PTS-STARTPTS').filter('format', 'yuv420p')
-         
-         a_main = stream.audio.filter('asetpts', 'PTS-STARTPTS').filter('aresample', 48000).filter('loudnorm', I=-14, TP=-1, LRA=7)
-         
-         # 1. Prepare Tracking Expressions
-         crop_w_split = int(original_height * (1080 / 960))
-         crop_w_focus = int(original_height * (1080 / 1920))
-         
--        x_top_expr, x_bot_expr, x_focus_expr = [], [], []
--        for i in range(len(metadata) - 1):
--            t_s, t_e = metadata[i]['time'], metadata[i+1]['time']
--            p_top = max(0, min(original_width - crop_w_split, metadata[i]['x_top'] * original_width - crop_w_split/2))
--            p_bot = max(0, min(original_width - crop_w_split, metadata[i]['x_bot'] * original_width - crop_w_split/2))
--            p_foc = max(0, min(original_width - crop_w_focus, ((metadata[i]['x_top'] + metadata[i]['x_bot'])/2) * original_width - crop_w_focus/2))
--            
--            # Use half-open time windows [t_s, t_e) so exactly one segment is active.
--            # `between()` is inclusive on both ends and can cause one-frame overlaps,
--            # producing a sudden x-position spike (visual glitch) at segment boundaries.
--            gate = f"gte(t,{t_s:.3f})*lt(t,{t_e:.3f})"
--            x_top_expr.append(f"{p_top}*{gate}")
--            x_bot_expr.append(f"{p_bot}*{gate}")
--            x_focus_expr.append(f"{p_foc}*{gate}")
--
--        if metadata:
--            last = metadata[-1]
--            p_top = max(0, min(original_width - crop_w_split, last['x_top'] * original_width - crop_w_split/2))
--            p_bot = max(0, min(original_width - crop_w_split, last['x_bot'] * original_width - crop_w_split/2))
--            p_foc = max(0, min(original_width - crop_w_focus, ((last['x_top'] + last['x_bot'])/2) * original_width - crop_w_focus/2))
--            x_top_expr.append(f"{p_top}*gte(t,{last['time']:.3f})")
--            x_bot_expr.append(f"{p_bot}*gte(t,{last['time']:.3f})")
--            x_focus_expr.append(f"{p_foc}*gte(t,{last['time']:.3f})")
--        else:
--            # Metadata bisa kosong jika analisis gagal; gunakan center crop agar FFmpeg tetap valid.
--            default_top = max(0, (original_width - crop_w_split) / 2)
--            default_foc = max(0, (original_width - crop_w_focus) / 2)
--            x_top_expr.append(str(default_top))
--            x_bot_expr.append(str(default_top))
--            x_focus_expr.append(str(default_foc))
-+        x_top_expr = self._build_ease_expr(metadata, crop_w_split, original_width, 'x_top')
-+        x_bot_expr = self._build_ease_expr(metadata, crop_w_split, original_width, 'x_bot')
-+        x_focus_expr = self._build_ease_expr(metadata, crop_w_focus, original_width, 'focus')
- 
-         # 2. Build Layer Nodes (Safe split syntax)
-         splits1 = v_std.split()
-         v_top_node = splits1[0]
-         v_temp = splits1[1]
-         
-         splits2 = v_temp.split()
-         v_bot_node = splits2[0]
-         v_foc_node = splits2[1]
- 
--        v_top = v_top_node.filter('crop', crop_w_split, 'ih', x=" + ".join(x_top_expr), y=0).filter('scale', 1080, 960, force_original_aspect_ratio='increase').filter('crop', 1080, 960)
--        v_bot = v_bot_node.filter('crop', crop_w_split, 'ih', x=" + ".join(x_bot_expr), y=0).filter('scale', 1080, 960, force_original_aspect_ratio='increase').filter('crop', 1080, 960)
-+        v_top = v_top_node.filter('crop', crop_w_split, 'ih', x=x_top_expr, y=0).filter('scale', 1080, 960, force_original_aspect_ratio='increase').filter('crop', 1080, 960)
-+        v_bot = v_bot_node.filter('crop', crop_w_split, 'ih', x=x_bot_expr, y=0).filter('scale', 1080, 960, force_original_aspect_ratio='increase').filter('crop', 1080, 960)
-         v_split_stack = ffmpeg.filter([v_top, v_bot], 'vstack')
-         
-         # Focus Layer (Single 9:16)
--        v_focus = v_foc_node.filter('crop', crop_w_focus, 'ih', x=" + ".join(x_focus_expr), y=0).filter('scale', 1080, 1920, force_original_aspect_ratio='increase').filter('crop', 1080, 1920)
-+        v_focus = v_foc_node.filter('crop', crop_w_focus, 'ih', x=x_focus_expr, y=0).filter('scale', 1080, 1920, force_original_aspect_ratio='increase').filter('crop', 1080, 1920)
- 
-         # 3. Dynamic Switcher (Single Overlay Logic)
-         # Combine all split segments into one expression to avoid multiple outgoing edges
-         split_ranges = []
-         if metadata:
-             curr_mode = metadata[0]['layout_mode']
-             start_t = metadata[0]['time']
-             for m in metadata:
-                 if m['layout_mode'] != curr_mode:
-                     if curr_mode == 'split':
-                         split_ranges.append(f"gte(t,{start_t:.3f})*lt(t,{m['time']:.3f})")
-                     curr_mode = m['layout_mode']
-                     start_t = m['time']
-             if curr_mode == 'split':
-                 split_ranges.append(f"gte(t,{start_t:.3f})")
- 
-         video = v_focus
-         if split_ranges:
-             combined_enable = "+".join(split_ranges)
-             video = ffmpeg.filter([video, v_split_stack], 'overlay', enable=combined_enable)
- 
-         if ass_path and os.path.exists(ass_path):
-             video = video.filter('ass', os.path.abspath(ass_path))
-             
-         video = video.filter('drawtext', text='KILASAN VIDEO', fontcolor='white', alpha=0.5, fontsize=40, x='(w-text_w)/2', y='(h-text_h)/2 + 200')
- 
-EOF
-)

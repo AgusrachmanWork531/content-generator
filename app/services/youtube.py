@@ -208,8 +208,8 @@ def crop_video(input_path: str, output_path: str, start_time, end_time) -> str:
     # which causes subtitle timing misalignment.
     cmd = [
         "ffmpeg", "-y",
-        "-i", input_path,
         "-ss", str(start_sec),
+        "-i", input_path,
         "-t", str(duration),
         "-c:v", "libx264",
         "-preset", "superfast",
