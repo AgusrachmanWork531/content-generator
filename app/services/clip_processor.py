@@ -138,7 +138,8 @@ async def process_clip_request(request: ClipDownloadRequest) -> ClipItemResponse
             video_title = request.metaData.get('title') if request.metaData else None
             clipper.render(
                 final_path, reframe_path, 
-                smoothed, width, height, # Added height
+                smoothed, width, height, 
+                fps=fps,
                 title=video_title,
                 ass_path=ass_path, 
                 anti_bot_vfx=request.anti_bot_vfx,
