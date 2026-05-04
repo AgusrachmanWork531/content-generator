@@ -1,0 +1,661 @@
+
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/6cf14a5b-d14d-48c2-ab4f-319cac5e0d11.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_6fadca99.mp4
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/2c6e4f8e-13a4-4325-8dfe-5692697eec22.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_c011fee6.mp4
+WARNING:  StatReload detected changes in 'app/services/compilation_processor.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [38944]
+INFO:     Started server process [39121]
+INFO:     Waiting for application startup.
+INFO:app.core.tasks:Running cleanup task...
+INFO:app.core.tasks:Cleanup worker started.
+INFO:app.main:Starting Compilation Worker...
+INFO:app.core.tasks:Compilation sync worker started.
+INFO:     Application startup complete.
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:googleapiclient.discovery_cache:file_cache is only supported with oauth2client<4.0.0
+INFO:google_auth_httplib2:Refreshing credentials due to a 401 response. Attempt 1/2.
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+./run_compilation.sh: line 35: 38940 Killed: 9               uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload
+(base) agusrachman@Aguss-MacBook-Pro download-clip % ./run_compilation.sh
+=== YouTube Compilation Service Controller ===
+[1/4] Killing process 39149
+39209 on port 8889...
+[2/4] Virtual Environment activated.
+[4/4] Starting Compilation Service on port 8889...
+INFO:     Will watch for changes in these directories: ['/Users/agusrachman/Documents/Docker/n8n/download-clip']
+INFO:     Uvicorn running on http://0.0.0.0:8889 (Press CTRL+C to quit)
+INFO:     Started reloader process [39297] using StatReload
+INFO:     Started server process [39301]
+INFO:     Waiting for application startup.
+INFO:app.core.tasks:Running cleanup task...
+INFO:app.core.tasks:Cleanup worker started.
+INFO:app.main:Starting Compilation Worker...
+INFO:app.core.tasks:Compilation sync worker started.
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:     Application startup complete.
+INFO:app.core.tasks:Deleted expired file: a7af4fa7-f008-4d3a-b670-2c603d34542a.mp4
+INFO:googleapiclient.discovery_cache:file_cache is only supported with oauth2client<4.0.0
+INFO:app.core.tasks:Deleted expired file: 83d299bc-4865-4dbf-a344-4e8bd165e10d.mp4
+INFO:app.core.tasks:[Cleanup TTL] Removed 2 expired items.
+INFO:google_auth_httplib2:Refreshing credentials due to a 401 response. Attempt 1/2.
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/bf73e8a5-8429-4d8a-9a79-e38bf4557c60.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_f318161e.mp4
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/951f4170-15be-40c1-bd76-ede4ae549aa5.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_198a3866.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_198a3866.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_f318161e.mp4
+INFO:app.services.compilation_processor:Merging 2 videos with complex filter...
+ERROR:app.services.compilation_processor:FFmpeg merge failed: ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+  built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)
+  configuration: --prefix=/Volumes/tempdisk/sw --extra-cflags=-fno-stack-check --arch=arm64 --cc=/usr/bin/clang --enable-gpl --enable-libvmaf --enable-libopenjpeg --enable-libopus --enable-libmp3lame --enable-libx264 --enable-libx265 --enable-libvpx --enable-libwebp --enable-libass --enable-libfreetype --enable-fontconfig --enable-libtheora --enable-libvorbis --enable-libsnappy --enable-libaom --enable-libvidstab --enable-libzimg --enable-libsvtav1 --enable-libharfbuzz --enable-libkvazaar --pkg-config-flags=--static --enable-ffplay --enable-postproc --enable-neon --enable-runtime-cpudetect --disable-indev=qtkit --disable-indev=x11grab_xcb
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Fontconfig error: Cannot load default config file: No such file: (null)
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_198a3866.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:35.02, start: 0.065000, bitrate: 6845 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6647 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_f318161e.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:44.64, start: 0.058000, bitrate: 6412 kb/s
+  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6215 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #1:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #2, mp3, from 'tmp_downloads/trans_sfx_1_3d0e741d.mp3':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Duration: 00:00:00.34, start: 0.025057, bitrate: 138 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 44100 Hz, mono, fltp, 128 kb/s
+Input #3, image2, from '/Users/agusrachman/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x12600df10] Output with label 'v_final_c9d1' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_5b1fb8ac.mp4.
+Error opening output files: Invalid argument
+
+ERROR:app.core.tasks:Failed to process compilation TEST_VIDEO_01: FFmpeg merge failed: an/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x12600df10] Output with label 'v_final_c9d1' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_5b1fb8ac.mp4.
+Error opening output files: Invalid argument
+
+INFO:app.core.tasks:Running cleanup task...
+INFO:app.core.tasks:Deleted expired file: trim_79fd2b10.mp4
+INFO:app.core.tasks:Deleted expired file: trim_4f5cf45e.mp4
+INFO:app.core.tasks:[Cleanup TTL] Removed 2 expired items.
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/52a13dd2-20d3-43aa-b12f-5d6bf3cddc53.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_9c76cad2.mp4
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/eddda1b0-013f-4179-abff-bc15f710dd31.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_aa346f06.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_9c76cad2.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_aa346f06.mp4
+INFO:app.services.compilation_processor:Merging 2 videos with complex filter...
+ERROR:app.services.compilation_processor:FFmpeg merge failed: ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+  built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)
+  configuration: --prefix=/Volumes/tempdisk/sw --extra-cflags=-fno-stack-check --arch=arm64 --cc=/usr/bin/clang --enable-gpl --enable-libvmaf --enable-libopenjpeg --enable-libopus --enable-libmp3lame --enable-libx264 --enable-libx265 --enable-libvpx --enable-libwebp --enable-libass --enable-libfreetype --enable-fontconfig --enable-libtheora --enable-libvorbis --enable-libsnappy --enable-libaom --enable-libvidstab --enable-libzimg --enable-libsvtav1 --enable-libharfbuzz --enable-libkvazaar --pkg-config-flags=--static --enable-ffplay --enable-postproc --enable-neon --enable-runtime-cpudetect --disable-indev=qtkit --disable-indev=x11grab_xcb
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Fontconfig error: Cannot load default config file: No such file: (null)
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_9c76cad2.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:35.02, start: 0.065000, bitrate: 6845 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6647 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_aa346f06.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:44.64, start: 0.058000, bitrate: 6412 kb/s
+  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6215 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #1:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #2, mp3, from 'tmp_downloads/trans_sfx_1_c308b95e.mp3':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Duration: 00:00:00.55, start: 0.025057, bitrate: 134 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 44100 Hz, mono, fltp, 128 kb/s
+Input #3, image2, from '/Users/agusrachman/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x11560a050] Output with label 'v_final_ec6e' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_90e8b67c.mp4.
+Error opening output files: Invalid argument
+
+ERROR:app.core.tasks:Failed to process compilation TEST_VIDEO_01: FFmpeg merge failed: an/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x11560a050] Output with label 'v_final_ec6e' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_90e8b67c.mp4.
+Error opening output files: Invalid argument
+
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/9070e221-4545-462e-b391-f0d47c1188c9.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_5da96d1f.mp4
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/9c301eed-ebc0-41a9-851f-f491b9b02e32.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_53a553e5.mp4
+INFO:app.core.tasks:Running cleanup task...
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_53a553e5.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_5da96d1f.mp4
+INFO:app.services.compilation_processor:Merging 2 videos with complex filter...
+ERROR:app.services.compilation_processor:FFmpeg merge failed: ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+  built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)
+  configuration: --prefix=/Volumes/tempdisk/sw --extra-cflags=-fno-stack-check --arch=arm64 --cc=/usr/bin/clang --enable-gpl --enable-libvmaf --enable-libopenjpeg --enable-libopus --enable-libmp3lame --enable-libx264 --enable-libx265 --enable-libvpx --enable-libwebp --enable-libass --enable-libfreetype --enable-fontconfig --enable-libtheora --enable-libvorbis --enable-libsnappy --enable-libaom --enable-libvidstab --enable-libzimg --enable-libsvtav1 --enable-libharfbuzz --enable-libkvazaar --pkg-config-flags=--static --enable-ffplay --enable-postproc --enable-neon --enable-runtime-cpudetect --disable-indev=qtkit --disable-indev=x11grab_xcb
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Fontconfig error: Cannot load default config file: No such file: (null)
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_53a553e5.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:35.02, start: 0.065000, bitrate: 6845 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6647 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_5da96d1f.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:44.64, start: 0.058000, bitrate: 6412 kb/s
+  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6215 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #1:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #2, mp3, from 'tmp_downloads/trans_sfx_1_da4c91a7.mp3':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Duration: 00:00:00.34, start: 0.025057, bitrate: 138 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 44100 Hz, mono, fltp, 128 kb/s
+Input #3, image2, from '/Users/agusrachman/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x131613330] Output with label 'v_final_35fc' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_f0ecefce.mp4.
+Error opening output files: Invalid argument
+
+ERROR:app.core.tasks:Failed to process compilation TEST_VIDEO_01: FFmpeg merge failed: an/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x131613330] Output with label 'v_final_35fc' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_f0ecefce.mp4.
+Error opening output files: Invalid argument
+
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/d8c7ffd0-b818-49c1-ae15-8a336907cb2b.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_f8d526b9.mp4
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/34a4707c-46fb-4ecf-8259-2ad376665433.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_363434b9.mp4
+INFO:app.core.tasks:Running cleanup task...
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_f8d526b9.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_363434b9.mp4
+INFO:app.services.compilation_processor:Merging 2 videos with complex filter...
+ERROR:app.services.compilation_processor:FFmpeg merge failed: ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+  built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)
+  configuration: --prefix=/Volumes/tempdisk/sw --extra-cflags=-fno-stack-check --arch=arm64 --cc=/usr/bin/clang --enable-gpl --enable-libvmaf --enable-libopenjpeg --enable-libopus --enable-libmp3lame --enable-libx264 --enable-libx265 --enable-libvpx --enable-libwebp --enable-libass --enable-libfreetype --enable-fontconfig --enable-libtheora --enable-libvorbis --enable-libsnappy --enable-libaom --enable-libvidstab --enable-libzimg --enable-libsvtav1 --enable-libharfbuzz --enable-libkvazaar --pkg-config-flags=--static --enable-ffplay --enable-postproc --enable-neon --enable-runtime-cpudetect --disable-indev=qtkit --disable-indev=x11grab_xcb
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Fontconfig error: Cannot load default config file: No such file: (null)
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_f8d526b9.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:35.02, start: 0.065000, bitrate: 6845 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6647 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_363434b9.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:44.64, start: 0.058000, bitrate: 6412 kb/s
+  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6215 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #1:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #2, mp3, from 'tmp_downloads/trans_sfx_1_8b7b1001.mp3':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Duration: 00:00:00.29, start: 0.025057, bitrate: 140 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 44100 Hz, mono, fltp, 128 kb/s
+Input #3, image2, from '/Users/agusrachman/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x14180f200] Output with label 'v_final_2774' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_4f939867.mp4.
+Error opening output files: Invalid argument
+
+ERROR:app.core.tasks:Failed to process compilation TEST_VIDEO_01: FFmpeg merge failed: an/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x14180f200] Output with label 'v_final_2774' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_4f939867.mp4.
+Error opening output files: Invalid argument
+
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/07f52f13-821e-4575-b4c9-838a1e2467db.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_d4d7ccd9.mp4
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/2f8fd318-dfb8-4d55-982c-499004a4c8de.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_d2cd002c.mp4
+INFO:app.core.tasks:Running cleanup task...
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_d2cd002c.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_d4d7ccd9.mp4
+INFO:app.services.compilation_processor:Merging 2 videos with complex filter...
+ERROR:app.services.compilation_processor:FFmpeg merge failed: ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+  built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)
+  configuration: --prefix=/Volumes/tempdisk/sw --extra-cflags=-fno-stack-check --arch=arm64 --cc=/usr/bin/clang --enable-gpl --enable-libvmaf --enable-libopenjpeg --enable-libopus --enable-libmp3lame --enable-libx264 --enable-libx265 --enable-libvpx --enable-libwebp --enable-libass --enable-libfreetype --enable-fontconfig --enable-libtheora --enable-libvorbis --enable-libsnappy --enable-libaom --enable-libvidstab --enable-libzimg --enable-libsvtav1 --enable-libharfbuzz --enable-libkvazaar --pkg-config-flags=--static --enable-ffplay --enable-postproc --enable-neon --enable-runtime-cpudetect --disable-indev=qtkit --disable-indev=x11grab_xcb
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Fontconfig error: Cannot load default config file: No such file: (null)
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_d2cd002c.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:35.02, start: 0.065000, bitrate: 6845 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6647 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_d4d7ccd9.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:44.64, start: 0.058000, bitrate: 6412 kb/s
+  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6215 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #1:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #2, mp3, from 'tmp_downloads/trans_sfx_1_489ddc60.mp3':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Duration: 00:00:00.34, start: 0.025057, bitrate: 138 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 44100 Hz, mono, fltp, 128 kb/s
+Input #3, image2, from '/Users/agusrachman/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x13be1e9d0] Output with label 'v_final_98aa' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_3cbe13ca.mp4.
+Error opening output files: Invalid argument
+
+ERROR:app.core.tasks:Failed to process compilation TEST_VIDEO_01: FFmpeg merge failed: an/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x13be1e9d0] Output with label 'v_final_98aa' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_3cbe13ca.mp4.
+Error opening output files: Invalid argument
+
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/42b7600f-9a1b-40a9-811f-c772021d0550.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_c2f1c136.mp4
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/e4aae7e9-b2a7-453d-8e8b-6036fda1bc3e.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_75851378.mp4
+INFO:app.core.tasks:Running cleanup task...
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_c2f1c136.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_75851378.mp4
+INFO:app.services.compilation_processor:Merging 2 videos with complex filter...
+ERROR:app.services.compilation_processor:FFmpeg merge failed: ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+  built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)
+  configuration: --prefix=/Volumes/tempdisk/sw --extra-cflags=-fno-stack-check --arch=arm64 --cc=/usr/bin/clang --enable-gpl --enable-libvmaf --enable-libopenjpeg --enable-libopus --enable-libmp3lame --enable-libx264 --enable-libx265 --enable-libvpx --enable-libwebp --enable-libass --enable-libfreetype --enable-fontconfig --enable-libtheora --enable-libvorbis --enable-libsnappy --enable-libaom --enable-libvidstab --enable-libzimg --enable-libsvtav1 --enable-libharfbuzz --enable-libkvazaar --pkg-config-flags=--static --enable-ffplay --enable-postproc --enable-neon --enable-runtime-cpudetect --disable-indev=qtkit --disable-indev=x11grab_xcb
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Fontconfig error: Cannot load default config file: No such file: (null)
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_c2f1c136.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:35.02, start: 0.065000, bitrate: 6845 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6647 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_75851378.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:44.64, start: 0.058000, bitrate: 6412 kb/s
+  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6215 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #1:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #2, mp3, from 'tmp_downloads/trans_sfx_1_89f15178.mp3':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Duration: 00:00:00.18, start: 0.025057, bitrate: 148 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 44100 Hz, mono, fltp, 128 kb/s
+Input #3, image2, from '/Users/agusrachman/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x133911f20] Output with label 'v_final_d611' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_8dde10ad.mp4.
+Error opening output files: Invalid argument
+
+ERROR:app.core.tasks:Failed to process compilation TEST_VIDEO_01: FFmpeg merge failed: an/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x133911f20] Output with label 'v_final_d611' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_8dde10ad.mp4.
+Error opening output files: Invalid argument
+
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/b0b126f0-8c38-48ad-922c-52a650f9ec93.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_00385cba.mp4
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/4ff4c20b-b903-4f7d-b0ce-5987e2720730.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_c90a7c54.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_00385cba.mp4
+INFO:app.core.tasks:Running cleanup task...
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_c90a7c54.mp4
+INFO:app.services.compilation_processor:Merging 2 videos with complex filter...
+ERROR:app.services.compilation_processor:FFmpeg merge failed: ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+  built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)
+  configuration: --prefix=/Volumes/tempdisk/sw --extra-cflags=-fno-stack-check --arch=arm64 --cc=/usr/bin/clang --enable-gpl --enable-libvmaf --enable-libopenjpeg --enable-libopus --enable-libmp3lame --enable-libx264 --enable-libx265 --enable-libvpx --enable-libwebp --enable-libass --enable-libfreetype --enable-fontconfig --enable-libtheora --enable-libvorbis --enable-libsnappy --enable-libaom --enable-libvidstab --enable-libzimg --enable-libsvtav1 --enable-libharfbuzz --enable-libkvazaar --pkg-config-flags=--static --enable-ffplay --enable-postproc --enable-neon --enable-runtime-cpudetect --disable-indev=qtkit --disable-indev=x11grab_xcb
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Fontconfig error: Cannot load default config file: No such file: (null)
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_00385cba.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:35.02, start: 0.065000, bitrate: 6845 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6647 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_c90a7c54.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:44.64, start: 0.058000, bitrate: 6412 kb/s
+  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6215 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #1:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #2, mp3, from 'tmp_downloads/trans_sfx_1_dd25d44c.mp3':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Duration: 00:00:00.55, start: 0.025057, bitrate: 134 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 44100 Hz, mono, fltp, 128 kb/s
+Input #3, image2, from '/Users/agusrachman/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x153e1ced0] Output with label 'v_final_07ca' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_794bd6bf.mp4.
+Error opening output files: Invalid argument
+
+ERROR:app.core.tasks:Failed to process compilation TEST_VIDEO_01: FFmpeg merge failed: an/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x153e1ced0] Output with label 'v_final_07ca' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_794bd6bf.mp4.
+Error opening output files: Invalid argument
+
+INFO:app.core.tasks:Checking Google Sheets for pending compilations...
+INFO:app.services.google_sheets:Found 1 pending compilations.
+INFO:app.core.tasks:Starting compilation for ID: TEST_VIDEO_01
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Found video 18VwA5gzvD4 in local cache. Copying to workspace...
+INFO:app.services.youtube:Cropping video: 0:00:00 → 0:02:35 (duration=155.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 0.0 -i tmp_downloads/ad6dd70a-2320-4b28-8ffd-a17fc4d0c0f1.mp4 -t 155.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_ebffae89.mp4
+INFO:app.services.youtube:Cropping video: 0:05:33 → 0:08:18 (duration=165.0s)
+INFO:app.services.youtube:FFmpeg cmd: ffmpeg -y -ss 333.0 -i tmp_downloads/96883e3c-dd43-4520-a3f0-71578def085c.mp4 -t 165.0 -c:v libx264 -preset superfast -crf 18 -c:a aac -b:a 192k -avoid_negative_ts make_zero tmp_downloads/trim_28f1c92e.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_ebffae89.mp4
+INFO:app.services.youtube:Crop complete: tmp_downloads/trim_28f1c92e.mp4
+INFO:app.services.compilation_processor:Merging 2 videos with complex filter...
+ERROR:app.services.compilation_processor:FFmpeg merge failed: ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+  built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)
+  configuration: --prefix=/Volumes/tempdisk/sw --extra-cflags=-fno-stack-check --arch=arm64 --cc=/usr/bin/clang --enable-gpl --enable-libvmaf --enable-libopenjpeg --enable-libopus --enable-libmp3lame --enable-libx264 --enable-libx265 --enable-libvpx --enable-libwebp --enable-libass --enable-libfreetype --enable-fontconfig --enable-libtheora --enable-libvorbis --enable-libsnappy --enable-libaom --enable-libvidstab --enable-libzimg --enable-libsvtav1 --enable-libharfbuzz --enable-libkvazaar --pkg-config-flags=--static --enable-ffplay --enable-postproc --enable-neon --enable-runtime-cpudetect --disable-indev=qtkit --disable-indev=x11grab_xcb
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Fontconfig error: Cannot load default config file: No such file: (null)
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_ebffae89.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:35.02, start: 0.065000, bitrate: 6845 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6647 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'tmp_downloads/trim_28f1c92e.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.1.100
+  Duration: 00:02:44.64, start: 0.058000, bitrate: 6412 kb/s
+  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 6215 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.3.100 libx264
+  Stream #1:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Input #2, mp3, from 'tmp_downloads/trans_sfx_1_d25f588a.mp3':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Duration: 00:00:00.55, start: 0.025057, bitrate: 134 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 44100 Hz, mono, fltp, 128 kb/s
+Input #3, image2, from '/Users/agusrachman/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x123b11340] Output with label 'v_final_0dc1' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_a980407b.mp4.
+Error opening output files: Invalid argument
+
+ERROR:app.core.tasks:Failed to process compilation TEST_VIDEO_01: FFmpeg merge failed: an/Documents/Docker/n8n/download-clip/assets/logo.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 4930 kb/s
+  Stream #3:0: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 160x160 [SAR 1:1 DAR 1:1], 25 fps, 25 tbr, 25 tbn
+[out#0/mp4 @ 0x123b11340] Output with label 'v_final_0dc1' does not exist in any defined filter graph, or was already used elsewhere.
+Error opening output file tmp_downloads/merged_TEST_VIDEO_01_a980407b.mp4.
+Error opening output files: Invalid argument
+
+INFO:app.core.tasks:Running cleanup task...

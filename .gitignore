@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+tmp_downloads/
+*.log
+.DS_Store
+token.json
+client-secret.json
+yolo11n.pt
+*.mp4
+*.mp3
+*.jpg
+.agents/
+scratch/
