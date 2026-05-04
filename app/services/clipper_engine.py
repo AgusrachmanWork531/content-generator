@@ -197,9 +197,29 @@ class ClipperEngine:
             p_bot = max(0, min(original_width - crop_w_split, metadata[i]['x_bot'] * original_width - crop_w_split/2))
             p_foc = max(0, min(original_width - crop_w_focus, ((metadata[i]['x_top'] + metadata[i]['x_bot'])/2) * original_width - crop_w_focus/2))
             
-            x_top_expr.append(f"{p_top}*between(t,{t_s:.3f},{t_e:.3f})")
-            x_bot_expr.append(f"{p_bot}*between(t,{t_s:.3f},{t_e:.3f})")
-            x_focus_expr.append(f"{p_foc}*between(t,{t_s:.3f},{t_e:.3f})")
+            # Use half-open time windows [t_s, t_e) so exactly one segment is active.
+            # `between()` is inclusive on both ends and can cause one-frame overlaps,
+            # producing a sudden x-position spike (visual glitch) at segment boundaries.
+            gate = f"gte(t,{t_s:.3f})*lt(t,{t_e:.3f})"
+            x_top_expr.append(f"{p_top}*{gate}")
+            x_bot_expr.append(f"{p_bot}*{gate}")
+            x_focus_expr.append(f"{p_foc}*{gate}")
+
+        if metadata:
+            last = metadata[-1]
+            p_top = max(0, min(original_width - crop_w_split, last['x_top'] * original_width - crop_w_split/2))
+            p_bot = max(0, min(original_width - crop_w_split, last['x_bot'] * original_width - crop_w_split/2))
+            p_foc = max(0, min(original_width - crop_w_focus, ((last['x_top'] + last['x_bot'])/2) * original_width - crop_w_focus/2))
+            x_top_expr.append(f"{p_top}*gte(t,{last['time']:.3f})")
+            x_bot_expr.append(f"{p_bot}*gte(t,{last['time']:.3f})")
+            x_focus_expr.append(f"{p_foc}*gte(t,{last['time']:.3f})")
+        else:
+            # Metadata bisa kosong jika analisis gagal; gunakan center crop agar FFmpeg tetap valid.
+            default_top = max(0, (original_width - crop_w_split) / 2)
+            default_foc = max(0, (original_width - crop_w_focus) / 2)
+            x_top_expr.append(str(default_top))
+            x_bot_expr.append(str(default_top))
+            x_focus_expr.append(str(default_foc))
 
         # 2. Build Layer Nodes (Safe split syntax)
         splits1 = v_std.split()
@@ -226,11 +246,11 @@ class ClipperEngine:
             for m in metadata:
                 if m['layout_mode'] != curr_mode:
                     if curr_mode == 'split':
-                        split_ranges.append(f"between(t,{start_t:.3f},{m['time']:.3f})")
+                        split_ranges.append(f"gte(t,{start_t:.3f})*lt(t,{m['time']:.3f})")
                     curr_mode = m['layout_mode']
                     start_t = m['time']
             if curr_mode == 'split':
-                split_ranges.append(f"between(t,{start_t:.3f},{metadata[-1]['time'] + 1.0:.3f})")
+                split_ranges.append(f"gte(t,{start_t:.3f})")
 
         video = v_focus
         if split_ranges:
