@@ -1,5 +1,7 @@
 from googleapiclient.discovery import build
 import logging
+import time
+import socket
 from typing import List, Dict, Any
 from app.services.google_auth import get_credentials
 
@@ -17,8 +19,32 @@ class GoogleSheetsService:
     def _get_service(self):
         if not self.service:
             self.creds = get_credentials()
-            self.service = build('sheets', 'v4', credentials=self.creds)
+            # Set default timeout for the socket
+            socket.setdefaulttimeout(60)
+            self.service = build('sheets', 'v4', credentials=self.creds, cache_discovery=False)
         return self.service
+
+    def _execute_with_retry(self, request, max_retries=3):
+        """Helper to execute API requests with exponential backoff for transient errors."""
+        for i in range(max_retries):
+            try:
+                return request.execute()
+            except Exception as e:
+                err_msg = str(e)
+                # Handle transient network errors (Timeout, Connection Reset, etc.)
+                transient_errors = [
+                    "[Errno 54]", "[Errno 60]", "Operation timed out", 
+                    "Connection reset by peer", "HttpError 500", "HttpError 503"
+                ]
+                
+                if any(err in err_msg for err in transient_errors) and i < max_retries - 1:
+                    wait_time = 2 ** (i + 1)
+                    logger.warning(f"⚠️ Google Sheets API transient error: {err_msg}. Retrying in {wait_time}s... (Attempt {i+1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                
+                # If it's not a transient error or we're out of retries, raise it
+                raise e
 
     def get_pending_rows(self) -> List[Dict[str, Any]]:
         """
@@ -28,7 +54,8 @@ class GoogleSheetsService:
         try:
             service = self._get_service()
             sheet = service.spreadsheets()
-            result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
+            request = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME)
+            result = self._execute_with_retry(request)
             values = result.get('values', [])
 
             if not values:
@@ -97,7 +124,8 @@ class GoogleSheetsService:
         try:
             service = self._get_service()
             sheet = service.spreadsheets()
-            result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=COMPILATION_RANGE_NAME).execute()
+            request = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=COMPILATION_RANGE_NAME)
+            result = self._execute_with_retry(request)
             values = result.get('values', [])
 
             if not values:
@@ -159,12 +187,13 @@ class GoogleSheetsService:
             body = {
                 'values': [['TRUE']]
             }
-            sheet.values().update(
+            request = sheet.values().update(
                 spreadsheetId=SPREADSHEET_ID,
                 range=range_to_update,
                 valueInputOption='USER_ENTERED',
                 body=body
-            ).execute()
+            )
+            self._execute_with_retry(request)
             logger.info(f"Marked row {row_index} as DONE in Google Sheets.")
         except Exception as e:
             logger.error(f"Error updating Google Sheets row {row_index}: {e}")
@@ -182,20 +211,18 @@ class GoogleSheetsService:
                 body = {
                     'values': [['TRUE', result_url]]
                 }
-                sheet.values().update(
+                request = sheet.values().update(
                     spreadsheetId=SPREADSHEET_ID,
                     range=range_to_update,
                     valueInputOption='USER_ENTERED',
                     body=body
-                ).execute()
+                )
+                self._execute_with_retry(request)
                 logger.info(f"Marked compilation row {idx} as DONE.")
         except Exception as e:
             logger.error(f"Error updating compilation rows: {e}")
 
 google_sheets_service = GoogleSheetsService()
-
-def mark_row_done(row_index: int):
-    return google_sheets_service.mark_as_done(row_index)
 
 def mark_row_done(row_index: int):
     google_sheets_service.mark_as_done(row_index)
