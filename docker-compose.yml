@@ -1,0 +1,25 @@
+services:
+  content-short-api:
+    build: .
+    container_name: content_short_api
+    restart: unless-stopped
+    ports:
+      - "8088:8080"
+    environment:
+      - FFMPEG_BIN=/usr/bin/ffmpeg
+      - CV_PYTHON_BIN=/usr/local/bin/python
+      - CONTENT_SHORT_API_TOKEN=change-me
+      - CONTENT_SHORT_BASE_URL=http://content-short-api:8080
+      - VENV_DIR=/opt/content-short/transcript-venv
+      - SKIP_INSTALL=1
+    volumes:
+      - content_short_storage:/app/storage
+    networks:
+      - n8n_shared_network
+
+networks:
+  n8n_shared_network:
+    external: true
+
+volumes:
+  content_short_storage:

@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+import json
+with open('n8n_node.json') as f:
+    wf = json.load(f)
+for n in wf['nodes']:
+    if n.get('name') == 'Prepare Telegram Payload':
+        js = n['parameters']['jsCode']
+        lines = js.split('\n')
+        for i in range(min(20, len(lines))):
+            print(f'{i}: {repr(lines[i])}')

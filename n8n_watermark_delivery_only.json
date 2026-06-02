@@ -1,0 +1,274 @@
+{
+  "name": "Watermark Delivery Only",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "watermark-completed-status",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6144,
+        6176
+      ],
+      "id": "190abe8f-66c9-4efb-8c1c-31ac85c7a637",
+      "name": "If Watermark Completed2"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        6384,
+        6192
+      ],
+      "id": "8543e7c8-2127-4fb5-a4b2-0d301037245a",
+      "name": "Wait Watermark2",
+      "webhookId": "37804140-9dfa-4bf9-8ac3-2e9a2fffbe20"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        5760,
+        6176
+      ],
+      "id": "5f0a7f24-d594-4d3f-8727-f43b507541ff",
+      "name": "Cek Status Watermark2"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}/result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        6400,
+        6176
+      ],
+      "id": "get-watermark-result-restored",
+      "name": "Get Watermark Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Telegram Payload (with fallback to local storage)\nconst original = $('Code in JavaScript2').first().json;\nconst result = $input.first().json;\n\nconst API_BASE_URL = 'https://authentic-linguist-scoundrel.ngrok-free.dev';\n\nconst chat_id = original.telegram?.chat_id;\nif (!chat_id) {\n  throw new Error('chat_id tidak ditemukan dari payload Telegram');\n}\n\nconst yt = original.render_payload?.youtube_metadata;\nif (!yt) {\n  throw new Error('youtube_metadata tidak ditemukan dari render_payload');\n}\n\nconst video_id = original.video_id;\nlet files = result.files || [];\n\n// FIX: If files is empty, use local storage path directly\nlet watermarkedVideo = null;\nif (files.length === 0) {\n  const wmPath = `free-viral-shorts/${video_id}/watermarked`;\n  watermarkedVideo = {\n    filename: `${video_id}_wm.mp4`,\n    path: wmPath,\n    absolute_path: wmPath,\n    download_url: `${API_BASE_URL}/storage/free-viral-shorts/${video_id}/watermarked/${video_id}_wm.mp4`\n  };\n  console.log('[FALLBACK] Using local storage path:', wmPath);\n} else {\n  watermarkedVideo =\n    files.find(file =>\n      file.filename?.endsWith('.mp4') &&\n      (file.filename.includes('_wm') || file.path?.includes('/watermarked/'))\n    ) ||\n    files.find(file => file.filename?.endsWith('.mp4'));\n}\n\nif (!watermarkedVideo) {\n  throw new Error(`File video watermark tidak ditemukan. files=${JSON.stringify(files)}`);\n}\n\nconst rawVideoPath = watermarkedVideo.absolute_path || watermarkedVideo.file_path || watermarkedVideo.path;\nconst video_path = rawVideoPath?.startsWith('/') ? rawVideoPath : rawVideoPath ? `/Users/agusrachman/Documents/Codex/content-short/storage/${rawVideoPath}` : null;\n\nconst video_download_url = watermarkedVideo.download_url || (watermarkedVideo.url ? `${API_BASE_URL}${watermarkedVideo.url}` : null);\n\nif (!video_download_url) {\n  throw new Error(`Download URL video tidak ditemukan: ${JSON.stringify(watermarkedVideo)}`);\n}\n\nconst hashtags = Array.isArray(yt.hashtags) ? yt.hashtags.join(' ') : '';\nconst hookText = original.render_payload?.hook_3_5_seconds?.text || '-';\nconst thumbnailText = yt.thumbnail_text || '-';\nconst viralScore = original.render_payload?.viral_score ?? '-';\nconst clipType = original.render_payload?.clip_type || '-';\nconst duration = original.render_payload?.duration || original.render_payload?.calculated_duration || '-';\n\nconst caption = [yt.title || 'Video pendek', hashtags].filter(Boolean).join('\n\n').slice(0, 1024);\n\nconst metadata_text = [\n  '\u2705 Render Watermark Selesai',\n  '', `\ud83c\udfac Title:\n${yt.title || '-'}`,\n  '', `\ud83d\udcdd Description:\n${yt.description || '-'}`,\n  '', `\ud83c\udff7 Hashtags:\n${hashtags || '-'}`,\n  '', `\ud83d\uddbc Thumbnail Text:\n${thumbnailText}`,\n  '', `\ud83e\ude9d Hook:\n${hookText}`,\n  '', `\u2b50 Viral Score:\n${viralScore}`,\n  '', `\ud83c\udfad Clip Type:\n${clipType}`,\n  '', `\u23f1 Duration:\n${duration} detik`,\n  '', `\ud83d\udd17 Source Video ID:\n${video_id}`,\n  '', `\ud83d\udcc1 File:\n${watermarkedVideo.filename || video_path || video_download_url}`,\n  '', `\u2b07\ufe0f Download:\n${video_download_url}`\n].join('\n');\n\nreturn [{\n  json: { chat_id, video_id, video_path, video_download_url, caption, metadata_text, filename: watermarkedVideo.filename || video_path || video_download_url }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6624,
+        6176
+      ],
+      "id": "prepare-telegram-payload-restored",
+      "name": "Prepare Telegram Payload"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.metadata_text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        6832,
+        6288
+      ],
+      "id": "send-text-message-restored",
+      "name": "Send a text message",
+      "webhookId": "send-text-message-restored-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "wo2KtQA3GKUjikub",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.video_download_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        6832,
+        6080
+      ],
+      "id": "download-watermark-video-restored",
+      "name": "Download Watermark Video",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "={{ $('Prepare Telegram Payload').first().json.chat_id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ $('Prepare Telegram Payload').first().json.caption }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        7040,
+        6080
+      ],
+      "id": "send-video-restored",
+      "name": "Send a video",
+      "webhookId": "send-video-restored-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "wo2KtQA3GKUjikub",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "If Watermark Completed2": {
+      "main": [
+        [
+          {
+            "node": "Get Watermark Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Watermark2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Watermark2": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Watermark2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status Watermark2": {
+      "main": [
+        [
+          {
+            "node": "Keep Watermark Status Context2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Watermark Result": {
+      "main": [
+        [
+          {
+            "node": "Prepare Telegram Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Telegram Payload": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download Watermark Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Watermark Video": {
+      "main": [
+        [
+          {
+            "node": "Send a video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

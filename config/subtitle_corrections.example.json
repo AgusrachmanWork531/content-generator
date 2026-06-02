@@ -1,0 +1,13 @@
+{
+  "exact": {
+    "akrep": "akrab",
+    "kekil": "kecil",
+    "pasing": "masing"
+  },
+  "regex": [
+    {
+      "pattern": "^-([a-zA-ZÀ-ÿ]+)$",
+      "replace": "\\1"
+    }
+  ]
+}

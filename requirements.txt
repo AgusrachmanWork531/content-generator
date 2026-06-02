@@ -1,0 +1,21 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+youtube-transcript-api
+opencv-python-headless
+numpy
+pillow
+edge-tts
+pyautoflip==0.2.1
+
+# Google Drive API dependencies
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+
+# Subtitle generation packages (installed via git if needed)
+# auto-captions @ git+https://github.com/nikhil-reddy05/auto-captions.git
+# whisperx @ git+https://github.com/m-bain/whisperX.git
+# captions @ git+https://github.com/lattifai/captions.git

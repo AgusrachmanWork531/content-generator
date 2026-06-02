@@ -1,0 +1,1361 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        560,
+        1280
+      ],
+      "id": "3bcd2553-a5bd-43dc-bf5d-83889be75a5c",
+      "name": "test",
+      "webhookId": "27dfbc21-48ff-434d-8dfb-3d60c8a582f5"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfunction extractYouTubeVideoId(input) {\n  if (!input || typeof input !== 'string') return null;\n\n  const text = input.trim();\n\n  const patterns = [\n    /youtu\\.be\\/([a-zA-Z0-9_-]{11})/,\n    /youtube\\.com\\/watch\\?v=([a-zA-Z0-9_-]{11})/,\n    /youtube\\.com\\/shorts\\/([a-zA-Z0-9_-]{11})/,\n    /youtube\\.com\\/embed\\/([a-zA-Z0-9_-]{11})/,\n    /(?:^|[^a-zA-Z0-9_-])([a-zA-Z0-9_-]{11})(?:$|[^a-zA-Z0-9_-])/\n  ];\n\n  for (const pattern of patterns) {\n    const match = text.match(pattern);\n    if (match?.[1]) return match[1];\n  }\n\n  return null;\n}\n\nreturn items.map(item => {\n  const chatInput = item.json.chatInput || item.json.text || item.json.message || '';\n  const videoId = extractYouTubeVideoId(chatInput);\n\n  if (!videoId) {\n    throw new Error(`Invalid YouTube source. video_id tidak ditemukan dari input: ${chatInput}`);\n  }\n\n  return {\n    json: {\n      ...item.json,\n      source: `https://youtu.be/${videoId}`,\n      video_id: videoId,\n      original_input: chatInput\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        1280
+      ],
+      "id": "3c70a5e6-4eef-41c9-b08c-c80b0cbbcfcd",
+      "name": "Parse Source & Video ID"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2128,
+        1536
+      ],
+      "id": "9a4a87c0-8bff-4ea4-b1fd-3f7a5f792dd8",
+      "name": "Cek Status Render",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9a25dc2b-4a08-4539-acef-03ccfd185218",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1424,
+        1280
+      ],
+      "id": "4fb3dab2-af31-424e-884d-81e26edb292e",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1664,
+        1296
+      ],
+      "id": "ad529167-86c1-4b86-8b20-ca4fb378337f",
+      "name": "Wait4",
+      "webhookId": "d8043f7f-7843-440f-9e93-5357c3c32b73"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/download",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
+            },
+            {
+              "name": "quality",
+              "value": "1080"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        1280
+      ],
+      "id": "6dac87dc-dd60-4f9a-9e72-9861ea4aabb1",
+      "name": "Download1",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1232,
+        1280
+      ],
+      "id": "ebc3b8f5-83ab-410a-ad30-946c00c177be",
+      "name": "Check Status Download1",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1232,
+        1520
+      ],
+      "id": "43be44ee-1214-44e4-b9e5-d597b31a3310",
+      "name": "Wait5",
+      "webhookId": "d8043f7f-7843-440f-9e93-5357c3c32b73"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/transcript",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
+            },
+            {
+              "name": "languages",
+              "value": "id,en"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        608,
+        1504
+      ],
+      "id": "4c082025-8256-4954-ad50-923d1b09d526",
+      "name": "Ekstract Trunscribe1",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $('Ekstract Trunscribe1').item.json.body.job_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        800,
+        1504
+      ],
+      "id": "b30f8dc3-d125-44fb-83b0-aa1954423efb",
+      "name": "Check Status Extract transcribe1",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9a25dc2b-4a08-4539-acef-03ccfd185218",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        1504
+      ],
+      "id": "e83e0912-bf3e-4c52-9791-aacddf3b7cc5",
+      "name": "if1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9a25dc2b-4a08-4539-acef-03ccfd185218",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        1760
+      ],
+      "id": "4c6b56af-9935-4b27-8eed-3917bc2cee28",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        1776
+      ],
+      "id": "64739800-c425-4e65-95ee-fb20de3819d2",
+      "name": "Wait6",
+      "webhookId": "d8043f7f-7843-440f-9e93-5357c3c32b73"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/analyze",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
+            },
+            {
+              "name": "num_clips",
+              "value": "1"
+            },
+            {
+              "name": "quality",
+              "value": "1080"
+            },
+            {
+              "name": "languages",
+              "value": "id,en"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        1760
+      ],
+      "id": "c9288e5a-994b-4d21-9884-20eeb6274d0f",
+      "name": "Analisa Video1"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $('Analisa Video1').item.json.body.job_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1200,
+        1760
+      ],
+      "id": "b5f29b3f-0588-4aa9-b0d8-46cb6a12f9c7",
+      "name": "Cek Status Analisa2",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $('Analisa Video1').item.json.body.job_id }}/result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1440,
+        1536
+      ],
+      "id": "b1623930-4155-420e-b06a-8cf0e0ae3033",
+      "name": "Get Hasil Analisa1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
+            },
+            {
+              "name": "num_clips",
+              "value": "1"
+            },
+            {
+              "name": "quality",
+              "value": "1080"
+            },
+            {
+              "name": "languages",
+              "value": "id,en"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1776,
+        1536
+      ],
+      "id": "0ab94b87-39ab-46e5-9503-f7c7c478d431",
+      "name": "Rander Video1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9a25dc2b-4a08-4539-acef-03ccfd185218",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2352,
+        1536
+      ],
+      "id": "eb92452c-4603-449e-8b43-d387028ab00f",
+      "name": "If5"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2544,
+        1552
+      ],
+      "id": "43ecad55-3ec2-4e29-83c7-072a8ef41379",
+      "name": "Wait7",
+      "webhookId": "d8043f7f-7843-440f-9e93-5357c3c32b73"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/watermark",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $('Remapping Job ID & Video Id').item.json.source }}"
+            },
+            {
+              "name": "watermark_text",
+              "value": "KILASANVIDEO"
+            },
+            {
+              "name": "watermark_mode",
+              "value": "text"
+            },
+            {
+              "name": "watermark_position",
+              "value": "center_15_top"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2784,
+        1776
+      ],
+      "id": "515a51d9-1187-4394-8683-69f92abab53c",
+      "name": "Trigger Watermark"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Render job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: body.step || 'render',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: $('Parse Source & Video ID').item.json.source,\n      video_id: $('Parse Source & Video ID').item.json.video_id\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1936,
+        1536
+      ],
+      "id": "1ef9a951-d31c-424c-97a3-d2b19eee9f86",
+      "name": "Remapping Job ID & Video Id"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3600,
+        1904
+      ],
+      "id": "8072b51c-f1d0-4b28-ae43-92ebf2dab750",
+      "name": "Wait Watermark",
+      "webhookId": "37804140-9dfa-4bf9-8ac3-2e9a2fffbe20"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Watermark job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: body.step || 'watermark',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: $('Parse Source & Video ID').item.json.source,\n      video_id: $('Parse Source & Video ID').item.json.video_id\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2992,
+        1776
+      ],
+      "id": "b4f8ad95-739e-4450-8cd7-0fe2e5ddb6df",
+      "name": "Remap Watermark Job ID"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "name": "Cek Status Watermark",
+      "typeVersion": 4.3,
+      "position": [
+        3200,
+        1776
+      ],
+      "id": "dced9b9e-e110-49fe-bc28-408ca525831d"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "watermark-completed-status",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3408,
+        1776
+      ],
+      "id": "0f6b80bc-6df4-4c4f-92dc-6c4f2f6e9221",
+      "name": "If Watermark Completed"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}/result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3616,
+        1776
+      ],
+      "id": "44964fb5-62b1-4c0f-90bd-4eab4c59bb18",
+      "name": "Get Hasil Watermark"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n  const artifact = body.artifact_status || {};\n\n  // For watermark step, verify watermarked file exists\n  if (body.step === 'watermark') {\n    const watermarkedCount = artifact.watermarked_count || 0;\n    \n    if (watermarkedCount <= 0) {\n      throw new Error(`Watermark final video tidak ditemukan. artifact_status: ${JSON.stringify(artifact)}`);\n    }\n    \n    if (artifact.missing_expected_artifact) {\n      throw new Error(`Watermark artifact missing. Response: ${JSON.stringify(body)}`);\n    }\n  }\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3616,
+        1900
+      ],
+"id": "verify-watermark-artifact",
+      "name": "Verify Watermark Artifact"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/youtube-upload",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "video_url",
+              "value": "={{ $json.body?.final_video_url || $json.body?.output_url || $json.body?.video_url || $json.body?.artifact_status?.watermarked_files?.[0] || $json.body?.artifact_status?.output_files?.[0] || $json.final_video_url || $json.output_url || $json.video_url || $json.artifact_status?.watermarked_files?.[0] || $json.artifact_status?.output_files?.[0] }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $('Get Hasil Analisa1').item.json.title || $('Get Hasil Analisa1').item.json.body?.title || 'KILASANVIDEO - Shorts Viral' }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $('Get Hasil Analisa1').item.json.description || $('Get Hasil Analisa1').item.json.body?.description || 'Video short otomatis dari KILASANVIDEO.' }}"
+            },
+            {
+              "name": "tags",
+              "value": "shorts,viral,hiburan,lucu,kilasanvideo"
+            },
+            {
+              "name": "privacy_status",
+              "value": "public"
+            },
+            {
+              "name": "category_id",
+              "value": "24"
+            },
+            {
+              "name": "source",
+              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
+            },
+            {
+              "name": "video_id",
+              "value": "={{ $('Parse Source & Video ID').item.json.video_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3840,
+        1900
+      ],
+      "id": "upload-to-youtube",
+      "name": "Upload To YouTube",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/opening",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $('Remapping Job ID & Video Id').item.json.source }}"
+            },
+            {
+              "name": "opening_statement",
+              "value": "Simak momen paling absurd dan lucu berikut ini."
+            },
+            {
+              "name": "opening_voice",
+              "value": "id-ID-GadisNeural"
+            },
+            {
+              "name": "opening_rate",
+              "value": "+10%"
+            },
+            {
+              "name": "opening_pitch",
+              "value": "+0Hz"
+            },
+            {
+              "name": "opening_thumbnail_title",
+              "value": "MOMEN PALING ABSURD"
+            },
+            {
+              "name": "opening_thumbnail_font",
+              "value": "assets/font/thumbnail-title/Bangers-Regular.ttf"
+            },
+            {
+              "name": "opening_source_title",
+              "value": "KILASANVIDEO"
+            },
+            {
+              "name": "opening_bgm_volume",
+              "value": "0.30"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1952,
+        1776
+      ],
+      "id": "67eb4903-137f-4e67-9fc2-7b49fd286b4a",
+      "name": "Trigger Opening Narration"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Opening job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: body.step || 'opening',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: $('Parse Source & Video ID').item.json.source,\n      video_id: $('Parse Source & Video ID').item.json.video_id\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        1776
+      ],
+      "id": "a86f67bd-7953-41f0-ae70-9b7c9db13c5f",
+      "name": "Remap Opening Job ID"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2368,
+        1776
+      ],
+      "id": "e8991d32-793f-4ec4-9823-b26ce8c39fac",
+      "name": "Cek Status Opening"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "opening-completed-status",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2576,
+        1776
+      ],
+      "id": "084df1bd-fe37-4d87-b444-bb0d30b891cc",
+      "name": "If Opening Completed"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2576,
+        1936
+      ],
+      "id": "76857dff-d156-4b4d-92ea-868c5723aa8e",
+      "name": "Wait Opening",
+      "webhookId": "37804140-9dfa-4bf9-8ac3-2e9a2fffbe21"
+    }
+  ],
+  "connections": {
+    "test": {
+      "main": [
+        [
+          {
+            "node": "Parse Source & Video ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Source & Video ID": {
+      "main": [
+        [
+          {
+            "node": "Download1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status Render": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Ekstract Trunscribe1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait4": {
+      "main": [
+        [
+          {
+            "node": "Check Status Download1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download1": {
+      "main": [
+        [
+          {
+            "node": "Check Status Download1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status Download1": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait5": {
+      "main": [
+        [
+          {
+            "node": "Check Status Extract transcribe1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ekstract Trunscribe1": {
+      "main": [
+        [
+          {
+            "node": "Check Status Extract transcribe1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status Extract transcribe1": {
+      "main": [
+        [
+          {
+            "node": "if1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if1": {
+      "main": [
+        [
+          {
+            "node": "Analisa Video1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Get Hasil Analisa1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait6": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Analisa2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisa Video1": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Analisa2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status Analisa2": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Hasil Analisa1": {
+      "main": [
+        [
+          {
+            "node": "Rander Video1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rander Video1": {
+      "main": [
+        [
+          {
+            "node": "Remapping Job ID & Video Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If5": {
+      "main": [
+        [
+          {
+            "node": "Trigger Opening Narration",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait7": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remapping Job ID & Video Id": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Watermark": {
+      "main": [
+        [
+          {
+            "node": "Remap Watermark Job ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remap Watermark Job ID": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Watermark",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status Watermark": {
+      "main": [
+        [
+          {
+            "node": "If Watermark Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Watermark Completed": {
+      "main": [
+        [
+          {
+            "node": "Get Hasil Watermark",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Watermark",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Watermark": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Watermark",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Opening Narration": {
+      "main": [
+        [
+          {
+            "node": "Remap Opening Job ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remap Opening Job ID": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Opening",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status Opening": {
+      "main": [
+        [
+          {
+            "node": "If Opening Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Opening Completed": {
+      "main": [
+        [
+          {
+            "node": "Trigger Watermark",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Opening",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Opening": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Opening",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Hasil Watermark": {
+      "main": [
+        [
+          {
+            "node": "Verify Watermark Artifact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+"Verify Watermark Artifact": {
+      "main": [
+        [
+          {
+            "node": "Upload To YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload To YouTube": {
+      "main": [
+        [
+          {
+            "node": "Trigger Opening Narration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "481b6d6d8cdc2059cf679d4d7a29b248ab1ec28d8e0ed135d3d9c3f58c732b25"
+  }
+}
