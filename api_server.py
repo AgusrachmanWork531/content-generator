@@ -2537,6 +2537,45 @@ async def upload_job_to_drive(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/videos/{video_id}/upload/thumbnail")
+async def upload_video_thumbnail(
+    video_id: str,
+    file: UploadFile = File(..., description="Thumbnail image (PNG/JPG/JPEG/WEBP)"),
+    token: str = Depends(verify_token)
+):
+    """Upload opening narration thumbnail image for a video ID."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid video ID format")
+    
+    ext = Path(file.filename).suffix.lower()
+    if ext not in THUMBNAIL_ASSET_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}. Allowed: {THUMBNAIL_ASSET_EXTENSIONS}")
+    
+    THUMBNAIL_ASSET_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Clear existing variants
+    for existing_ext in THUMBNAIL_ASSET_EXTENSIONS:
+        existing_path = THUMBNAIL_ASSET_DIR / f"{video_id}{existing_ext}"
+        if existing_path.exists():
+            try:
+                existing_path.unlink()
+            except Exception:
+                pass
+    
+    target_path = THUMBNAIL_ASSET_DIR / f"{video_id}{ext}"
+    try:
+        content = await file.read()
+        target_path.write_bytes(content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save thumbnail: {e}")
+    
+    return {
+        "status": "completed",
+        "video_id": video_id,
+        "filename": target_path.name
+    }
+
+
 # Standalone Google Drive upload endpoint
 UPLOAD_TEMP_DIR = Path("/tmp/content-short-uploads")
 UPLOAD_TEMP_DIR.mkdir(parents=True, exist_ok=True)

@@ -242,6 +242,10 @@
             0% { box-shadow: 0 0 0 0px rgba(255, 204, 102, 0.3); }
             100% { box-shadow: 0 0 0 10px rgba(255, 204, 102, 0); }
         }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
         .step-item.active .step-number {
             background: #191919;
             color: #fff;
@@ -630,6 +634,12 @@
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 14px;
+        }
+
+        @media (min-width: 769px) {
+            .opening-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
         }
 
         .font-setting-card {
@@ -1077,7 +1087,7 @@
                         <div class="font-settings-badge" style="background: rgba(255, 204, 102, 0.08); border-color: rgba(255, 204, 102, 0.22); color: #ffcc66;">Step 06 config</div>
                     </div>
 
-                    <div class="font-settings-grid">
+                    <div class="font-settings-grid opening-grid">
                         <div class="font-setting-card" style="grid-column: span 1;">
                             <label class="font-label" for="openingStatement">Narration Statement</label>
                             <textarea id="openingStatement" style="width: 100%; height: 90px; padding: 12px; border-radius: 14px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 13px; font-family: inherit; resize: none; outline: none; margin-bottom: 12px;" placeholder="Tulis kalimat pembuka narasi di sini (contoh: Rahasia video pendek viral ternyata ada di 3 detik pertama...)"></textarea>
@@ -1099,6 +1109,27 @@
                             </div>
                         </div>
 
+                        <div class="font-setting-card" style="display: flex; flex-direction: column; gap: 10px;">
+                            <label class="font-label">Opening Thumbnail</label>
+                            
+                            <label class="upload-zone" for="thumbnailFile" style="min-height: 110px; padding: 12px; border-radius: 16px;">
+                                <input class="file-input" type="file" id="thumbnailFile" accept="image/png, image/jpeg, image/jpg, image/webp" />
+                                <div class="upload-content" style="gap: 6px;">
+                                    <div class="upload-icon" id="thumbUploadIcon" style="width: 32px; height: 32px; font-size: 16px; border-radius: 10px;">↑</div>
+                                    <div class="upload-title" id="thumbUploadTitle" style="font-size: 13px;">Upload Image</div>
+                                    <div class="upload-text" id="thumbUploadText" style="font-size: 11px;">PNG, JPG, or WEBP</div>
+                                </div>
+                            </label>
+                            
+                            <div id="thumbPreviewContainer" style="display: none; align-items: center; justify-content: center; border: 1px solid #1a3c22; border-radius: 16px; padding: 6px; background: #080f0a; margin-top: 5px;">
+                                <img id="thumbPreviewImg" src="" style="max-height: 80px; max-width: 100%; border-radius: 10px;" />
+                            </div>
+                            
+                            <div id="thumbnailStatusText" style="font-size: 11px; color: #ff5a5a; text-align: center; font-weight: bold; margin-top: 5px;">
+                                ⚠️ Thumbnail image required to unlock Step 6
+                            </div>
+                        </div>
+
                         <div class="font-setting-card" style="display: flex; flex-direction: column; justify-content: space-between;">
                             <div>
                                 <label class="font-label">Opening Audio & BGM</label>
@@ -1114,7 +1145,7 @@
                                 </div>
                             </div>
 
-                            <button class="render-btn" id="generateOpeningBtn">
+                            <button class="render-btn" id="generateOpeningBtn" disabled>
                                 Generate Opening Narration
                             </button>
                         </div>
@@ -1149,15 +1180,19 @@
         let metadataQueue = [];
         let isRendering = false;
         let currentVideoUrl = "";
+        let currentVideoId = "";
         let lastRenderJobId = "";
 
         async function fetchApi(endpoint, options = {}) {
             const url = `${API_BASE}${endpoint}`;
             const headers = {
-                "Content-Type": "application/json",
                 "Authorization": `Bearer ${API_TOKEN}`,
                 ...(options.headers || {})
             };
+            
+            if (!(options.body instanceof FormData)) {
+                headers["Content-Type"] = "application/json";
+            }
             
             const res = await fetch(url, {
                 ...options,
@@ -1433,6 +1468,7 @@ ${transcript}
                     processBadge.textContent = `Transcribing: ${job.status}...`;
                 });
                 updateStepper("stepTranscript", "done");
+                currentVideoId = trCompleted.video_id;
                 
                 // Populate transcribe text
                 if (trCompleted.transcribe_timeline && trCompleted.transcribe_timeline.segments) {
@@ -1667,9 +1703,83 @@ ${transcript}
                 // Show Step 6 Opening Narration settings panel
                 openingPanel.style.display = "block";
                 openingPanel.scrollIntoView({ behavior: "smooth" });
-                updateStepper("stepOpening", "active");
+                updateStepper("stepOpening", "hold");
+                toggleOpeningControls(true);
             }
         }
+
+        function toggleOpeningControls(disabled) {
+            document.getElementById("openingStatement").disabled = disabled;
+            document.getElementById("openingVoice").disabled = disabled;
+            document.getElementById("openingRate").disabled = disabled;
+            document.getElementById("openingBgm").disabled = disabled;
+            document.getElementById("openingBgmVolume").disabled = disabled;
+            document.getElementById("generateOpeningBtn").disabled = disabled;
+        }
+
+        const thumbnailFile = document.getElementById("thumbnailFile");
+        const thumbUploadIcon = document.getElementById("thumbUploadIcon");
+        const thumbUploadTitle = document.getElementById("thumbUploadTitle");
+        const thumbUploadText = document.getElementById("thumbUploadText");
+        const thumbPreviewContainer = document.getElementById("thumbPreviewContainer");
+        const thumbPreviewImg = document.getElementById("thumbPreviewImg");
+        const thumbnailStatusText = document.getElementById("thumbnailStatusText");
+
+        thumbnailFile.addEventListener("change", async function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            if (!currentVideoId) {
+                showToast("Selesaikan download dan transkripsi video terlebih dahulu!");
+                this.value = "";
+                return;
+            }
+
+            thumbUploadIcon.textContent = "⚙";
+            thumbUploadIcon.style.animation = "spin 1.5s linear infinite";
+            thumbUploadTitle.textContent = "Uploading...";
+            thumbUploadText.textContent = file.name;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const res = await fetchApi(`/videos/${currentVideoId}/upload/thumbnail`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                thumbUploadIcon.textContent = "✓";
+                thumbUploadIcon.style.animation = "none";
+                thumbUploadTitle.textContent = "Uploaded";
+                thumbUploadText.textContent = "Thumbnail verified successfully";
+
+                // Show preview
+                thumbPreviewImg.src = URL.createObjectURL(file);
+                thumbPreviewContainer.style.display = "flex";
+
+                // Update status text
+                thumbnailStatusText.textContent = "✓ Thumbnail verified and uploaded";
+                thumbnailStatusText.style.color = "#8dffb7";
+
+                // Unlock Opening controls
+                toggleOpeningControls(false);
+                updateStepper("stepOpening", "active");
+                showToast("Thumbnail berhasil diunggah! Step 6 terbuka.");
+
+            } catch (err) {
+                console.error(err);
+                thumbUploadIcon.textContent = "✕";
+                thumbUploadIcon.style.animation = "none";
+                thumbUploadTitle.textContent = "Upload Failed";
+                thumbUploadText.textContent = err.message;
+                thumbnailStatusText.textContent = "⚠️ Upload failed. Retry required.";
+                thumbnailStatusText.style.color = "#ff5a5a";
+                showToast(`Gagal mengunggah thumbnail: ${err.message}`);
+                toggleOpeningControls(true);
+                updateStepper("stepOpening", "hold");
+            }
+        });
 
         // Step 6 Opening Narration Execution
         generateOpeningBtn.addEventListener("click", async () => {
