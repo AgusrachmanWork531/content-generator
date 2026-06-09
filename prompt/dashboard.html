@@ -1234,24 +1234,41 @@
             return `${m}:${s}`;
         }
 
-        function logToConsole(message, type = "info") {
+        const jobLogTracker = {};
+
+        function logToConsole(message, type = "info", addPrefix = true) {
             const consoleBox = document.getElementById("consoleOutput");
             if (!consoleBox) return;
-            const time = new Date().toLocaleTimeString();
-            let prefix = `[${time}] [INFO]`;
-            let color = "#a5a5a5";
             
-            if (type === "error") {
-                prefix = `[${time}] [ERROR]`;
-                color = "#ff5a5a";
-            } else if (type === "system") {
-                prefix = `[${time}] [SYSTEM]`;
-                color = "#00ff66";
+            let color = "#a5a5a5";
+            let prefix = "";
+            
+            if (addPrefix) {
+                const time = new Date().toLocaleTimeString();
+                if (type === "error") {
+                    prefix = `[${time}] [ERROR] `;
+                    color = "#ff5a5a";
+                } else if (type === "system") {
+                    prefix = `[${time}] [SYSTEM] `;
+                    color = "#00ff66";
+                } else {
+                    prefix = `[${time}] [INFO] `;
+                    color = "#a5a5a5";
+                }
+            } else {
+                if (type === "error") {
+                    color = "#ff8585";
+                } else if (type === "system") {
+                    color = "#00ff66";
+                } else {
+                    color = "#dcdcdc";
+                }
             }
             
             const line = document.createElement("div");
             line.style.color = color;
-            line.textContent = `${prefix} ${message}`;
+            line.style.fontFamily = "monospace";
+            line.textContent = `${prefix}${message}`;
             consoleBox.appendChild(line);
             consoleBox.scrollTop = consoleBox.scrollHeight;
         }
@@ -1263,46 +1280,64 @@
             }
         }
 
-        async function fetchAndPrintLogs(jobId) {
+        async function fetchAndPrintLogsProgressive(jobId) {
+            if (!jobLogTracker[jobId]) {
+                jobLogTracker[jobId] = { stdoutLines: 0, stderrLines: 0 };
+            }
+            const tracker = jobLogTracker[jobId];
             try {
                 const logs = await fetchApi(`/jobs/${jobId}/logs`);
+                
                 if (logs.stdout) {
-                    logToConsole(`--- STDOUT logs for job ${jobId} ---`, "system");
                     const lines = logs.stdout.split('\n');
-                    lines.forEach(line => {
-                        if (line.trim()) logToConsole(line, "info");
-                    });
+                    if (lines.length > 0 && lines[lines.length - 1] === '') {
+                        lines.pop();
+                    }
+                    if (lines.length > tracker.stdoutLines) {
+                        const newLines = lines.slice(tracker.stdoutLines);
+                        newLines.forEach(line => {
+                            logToConsole(line, "info", false);
+                        });
+                        tracker.stdoutLines = lines.length;
+                    }
                 }
+                
                 if (logs.stderr) {
-                    logToConsole(`--- STDERR logs for job ${jobId} ---`, "system");
                     const lines = logs.stderr.split('\n');
-                    lines.forEach(line => {
-                        if (line.trim()) logToConsole(line, "error");
-                    });
+                    if (lines.length > 0 && lines[lines.length - 1] === '') {
+                        lines.pop();
+                    }
+                    if (lines.length > tracker.stderrLines) {
+                        const newLines = lines.slice(tracker.stderrLines);
+                        newLines.forEach(line => {
+                            logToConsole(line, "error", false);
+                        });
+                        tracker.stderrLines = lines.length;
+                    }
                 }
             } catch (err) {
-                logToConsole(`Gagal mengambil log untuk pekerjaan ${jobId}: ${err.message}`, "error");
+                console.error("Gagal mengambil log progresif:", err);
             }
         }
 
         async function pollJobStatus(jobId, onProgress) {
             logToConsole(`Monitoring job ${jobId}...`, "system");
+            jobLogTracker[jobId] = { stdoutLines: 0, stderrLines: 0 };
+            
             while (true) {
                 const job = await fetchApi(`/jobs/${jobId}`);
                 if (onProgress) {
                     onProgress(job);
                 }
                 
-                logToConsole(`Job ${jobId} status: ${job.status}`, "info");
+                await fetchAndPrintLogsProgressive(jobId);
                 
                 if (job.status === "completed") {
                     logToConsole(`Job ${jobId} completed successfully!`, "system");
-                    await fetchAndPrintLogs(jobId);
                     return job;
                 }
                 if (job.status === "failed") {
                     logToConsole(`Job ${jobId} failed: ${job.error || 'Unknown error'}`, "error");
-                    await fetchAndPrintLogs(jobId);
                     throw new Error(job.error || "Job failed");
                 }
                 await sleep(2000);
@@ -1345,7 +1380,8 @@
 
         function copyTranscript() {
             const transcript = document.getElementById("transcriptText").innerText;
-            copyToClipboard(transcript, "Transcribe berhasil dicopy");
+            const textToCopy = currentVideoId ? `Video ID: ${currentVideoId}\n\n${transcript}` : transcript;
+            copyToClipboard(textToCopy, "Transcribe berhasil dicopy");
         }
 
         function copyAIPrompt() {
