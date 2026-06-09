@@ -239,25 +239,27 @@ stderr="Auto-captions Python environment missing whisper. Set SUBTITLE_AUTOCAPTI
         self,
         json_path: Path,
         output_path: Path,
-        words_per_cap: int = 3,
-        font: str = "Montserrat",
-        fontsize: int = 72,
-        outline: int = 7,
-        shadow: int = 0,
-        margin_v: int = 120,
-        margin_lr: int = 70,
-        color_active: str = "#FFB117",
-        color_inactive: str = "#FFFFFF",
+        words_per_cap: int = 2,
+        font: str = "Montserrat Black",
+        fontsize: int = 82,
+        outline: int = 9,
+        shadow: int = 1,
+        margin_v: int = 480,
+        margin_lr: int = 120,
+        color_active: str = "#FFCC00",
+        color_inactive: str = "#E0E0E0",
         outline_color: str = "#000000",
         uppercase: bool = True,
-        max_chars_per_caption: int = 28,
-        tail_hold: float = 0.0,
-        pop_in_ms: int = 90,
-        pop_out_ms: int = 200,
-        pop_outline_extra: int = 3,
-        pop_blur: float = 0.8,
+        max_chars_per_caption: int = 16,
+        tail_hold: float = 0.12,
+        pop_in_ms: int = 50,
+        pop_out_ms: int = 120,
+        pop_outline_extra: int = 4,
+        pop_blur: float = 0.5,
+        fsp: float = 3.0,
         use_scale_animation: bool = False,
-) -> Path:
+        per_word_popup: bool = True,
+    ) -> Path:
         """
         Run json_to_ass.py to convert word timestamps to ASS.
         
@@ -265,7 +267,7 @@ stderr="Auto-captions Python environment missing whisper. Set SUBTITLE_AUTOCAPTI
         """
         self.ensure_installed()
 
-# FIX: Convert to absolute paths to ensure output goes to correct location
+        # Convert to absolute paths to ensure output goes to correct location
         json_path_abs = json_path.resolve()
         output_path_abs = output_path.resolve()
 
@@ -294,15 +296,17 @@ stderr="Auto-captions Python environment missing whisper. Set SUBTITLE_AUTOCAPTI
             "--pop-out-ms", str(pop_out_ms),
             "--pop-outline-extra", str(pop_outline_extra),
             "--pop-blur", str(pop_blur),
+            "--fsp", str(fsp),
         ]
 
-        # Fix: uppercase=False means add --no-uppercase (to keep lowercase)
-        # uppercase=True means NO --no-uppercase (so text stays uppercase)
         if not uppercase:
             cmd.append("--no-uppercase")
         
         if use_scale_animation:
             cmd.append("--use-scale-animation")
+
+        if per_word_popup:
+            cmd.append("--per-word-popup")
 
         result = subprocess.run(
             cmd,
@@ -465,14 +469,16 @@ stderr="Auto-captions Python environment missing whisper. Set SUBTITLE_AUTOCAPTI
                 color_active=style_config["active"],
                 color_inactive=style_config["inactive"],
                 outline_color=style_config["outline_color"],
-                uppercase=True,  # Default uppercase for viral_clip_pro
+                uppercase=True,
                 max_chars_per_caption=style_config["max_chars_per_caption"],
                 tail_hold=style_config["tail_hold"],
                 pop_in_ms=style_config["pop_in_ms"],
                 pop_out_ms=style_config["pop_out_ms"],
                 pop_outline_extra=style_config["pop_outline_extra"],
                 pop_blur=style_config["pop_blur"],
+                fsp=style_config.get("fsp", 3.0),
                 use_scale_animation=style_config["use_scale_animation"],
+                per_word_popup=style_config.get("per_word_popup", True),
             )
             outputs["ass"] = str(ass_path)
 

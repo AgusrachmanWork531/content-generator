@@ -2,450 +2,6 @@
   "nodes": [
     {
       "parameters": {
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        560,
-        1280
-      ],
-      "id": "3bcd2553-a5bd-43dc-bf5d-83889be75a5c",
-      "name": "test",
-      "webhookId": "27dfbc21-48ff-434d-8dfb-3d60c8a582f5"
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\n\nfunction extractYouTubeVideoId(input) {\n  if (!input || typeof input !== 'string') return null;\n\n  const text = input.trim();\n\n  const patterns = [\n    /youtu\\.be\\/([a-zA-Z0-9_-]{11})/,\n    /youtube\\.com\\/watch\\?v=([a-zA-Z0-9_-]{11})/,\n    /youtube\\.com\\/shorts\\/([a-zA-Z0-9_-]{11})/,\n    /youtube\\.com\\/embed\\/([a-zA-Z0-9_-]{11})/,\n    /(?:^|[^a-zA-Z0-9_-])([a-zA-Z0-9_-]{11})(?:$|[^a-zA-Z0-9_-])/\n  ];\n\n  for (const pattern of patterns) {\n    const match = text.match(pattern);\n    if (match?.[1]) return match[1];\n  }\n\n  return null;\n}\n\nreturn items.map(item => {\n  const chatInput = item.json.chatInput || item.json.text || item.json.message || '';\n  const videoId = extractYouTubeVideoId(chatInput);\n\n  if (!videoId) {\n    throw new Error(`Invalid YouTube source. video_id tidak ditemukan dari input: ${chatInput}`);\n  }\n\n  return {\n    json: {\n      ...item.json,\n      source: `https://youtu.be/${videoId}`,\n      video_id: videoId,\n      original_input: chatInput\n    }\n  };\n});"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        784,
-        1280
-      ],
-      "id": "3c70a5e6-4eef-41c9-b08c-c80b0cbbcfcd",
-      "name": "Parse Source & Video ID"
-    },
-    {
-      "parameters": {
-        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {}
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        2128,
-        1536
-      ],
-      "id": "9a4a87c0-8bff-4ea4-b1fd-3f7a5f792dd8",
-      "name": "Cek Status Render",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "qnh8bEUvqFLgPjIQ",
-          "name": "Bearer Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "9a25dc2b-4a08-4539-acef-03ccfd185218",
-              "leftValue": "=completed",
-              "rightValue": "={{ $json.status }}",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1424,
-        1280
-      ],
-      "id": "4fb3dab2-af31-424e-884d-81e26edb292e",
-      "name": "If3"
-    },
-    {
-      "parameters": {
-        "amount": 10
-      },
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        1664,
-        1296
-      ],
-      "id": "ad529167-86c1-4b86-8b20-ca4fb378337f",
-      "name": "Wait4",
-      "webhookId": "d8043f7f-7843-440f-9e93-5357c3c32b73"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/download",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {}
-          ]
-        },
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "source",
-              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
-            },
-            {
-              "name": "quality",
-              "value": "1080"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        1008,
-        1280
-      ],
-      "id": "6dac87dc-dd60-4f9a-9e72-9861ea4aabb1",
-      "name": "Download1",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "qnh8bEUvqFLgPjIQ",
-          "name": "Bearer Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {}
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        1232,
-        1280
-      ],
-      "id": "ebc3b8f5-83ab-410a-ad30-946c00c177be",
-      "name": "Check Status Download1",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "qnh8bEUvqFLgPjIQ",
-          "name": "Bearer Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "amount": 10
-      },
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        1232,
-        1520
-      ],
-      "id": "43be44ee-1214-44e4-b9e5-d597b31a3310",
-      "name": "Wait5",
-      "webhookId": "d8043f7f-7843-440f-9e93-5357c3c32b73"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/transcript",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {}
-          ]
-        },
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "source",
-              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
-            },
-            {
-              "name": "languages",
-              "value": "id,en"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": true
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        608,
-        1504
-      ],
-      "id": "4c082025-8256-4954-ad50-923d1b09d526",
-      "name": "Ekstract Trunscribe1",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "qnh8bEUvqFLgPjIQ",
-          "name": "Bearer Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $('Ekstract Trunscribe1').item.json.body.job_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {}
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        800,
-        1504
-      ],
-      "id": "b30f8dc3-d125-44fb-83b0-aa1954423efb",
-      "name": "Check Status Extract transcribe1",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "qnh8bEUvqFLgPjIQ",
-          "name": "Bearer Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "9a25dc2b-4a08-4539-acef-03ccfd185218",
-              "leftValue": "=completed",
-              "rightValue": "={{ $json.status }}",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        992,
-        1504
-      ],
-      "id": "e83e0912-bf3e-4c52-9791-aacddf3b7cc5",
-      "name": "if1"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "9a25dc2b-4a08-4539-acef-03ccfd185218",
-              "leftValue": "=completed",
-              "rightValue": "={{ $json.status }}",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1376,
-        1760
-      ],
-      "id": "4c6b56af-9935-4b27-8eed-3917bc2cee28",
-      "name": "If4"
-    },
-    {
-      "parameters": {
-        "amount": 10
-      },
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        1568,
-        1776
-      ],
-      "id": "64739800-c425-4e65-95ee-fb20de3819d2",
-      "name": "Wait6",
-      "webhookId": "d8043f7f-7843-440f-9e93-5357c3c32b73"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/analyze",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer change-me"
-            }
-          ]
-        },
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "source",
-              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
-            },
-            {
-              "name": "num_clips",
-              "value": "1"
-            },
-            {
-              "name": "quality",
-              "value": "1080"
-            },
-            {
-              "name": "languages",
-              "value": "id,en"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": true
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        1008,
-        1760
-      ],
-      "id": "c9288e5a-994b-4d21-9884-20eeb6274d0f",
-      "name": "Analisa Video1"
-    },
-    {
-      "parameters": {
-        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $('Analisa Video1').item.json.body.job_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {}
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        1200,
-        1760
-      ],
-      "id": "b5f29b3f-0588-4aa9-b0d8-46cb6a12f9c7",
-      "name": "Cek Status Analisa2",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "qnh8bEUvqFLgPjIQ",
-          "name": "Bearer Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $('Analisa Video1').item.json.body.job_id }}/result",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer change-me"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        1440,
-        1536
-      ],
-      "id": "b1623930-4155-420e-b06a-8cf0e0ae3033",
-      "name": "Get Hasil Analisa1"
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/render",
         "sendHeaders": true,
@@ -458,42 +14,53 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "source",
-              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
-            },
-            {
-              "name": "num_clips",
-              "value": "1"
-            },
-            {
-              "name": "quality",
-              "value": "1080"
-            },
-            {
-              "name": "languages",
-              "value": "id,en"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": true
-            }
-          }
-        }
+        "specifyBody": "json",
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        1776,
-        1536
+        0,
+        128
       ],
-      "id": "0ab94b87-39ab-46e5-9503-f7c7c478d431",
-      "name": "Rander Video1"
+      "id": "829754d2-b0c3-488a-9365-df50322d0467",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code Node\n * Parser Telegram input untuk payload JSON dari message.text atau file .json.\n */\n\nfunction fail(message, details = {}) {\n  throw new Error(\n    `${message}${Object.keys(details).length ? ` | ${JSON.stringify(details)}` : ''}`\n  );\n}\n\nfunction isObject(value) {\n  return value !== null && typeof value === 'object' && !Array.isArray(value);\n}\n\nfunction isNonEmptyString(value) {\n  return typeof value === 'string' && value.trim().length > 0;\n}\n\nfunction isValidNumber(value) {\n  return typeof value === 'number' && Number.isFinite(value);\n}\n\nfunction extractYoutubeVideoId(sourceOrVideoId) {\n  if (!isNonEmptyString(sourceOrVideoId)) return null;\n\n  const value = sourceOrVideoId.trim();\n\n  const patterns = [\n    /youtube\\.com\\/watch\\?v=([a-zA-Z0-9_-]{11})/,\n    /youtu\\.be\\/([a-zA-Z0-9_-]{11})/,\n    /youtube\\.com\\/shorts\\/([a-zA-Z0-9_-]{11})/,\n    /^([a-zA-Z0-9_-]{11})$/\n  ];\n\n  for (const pattern of patterns) {\n    const match = value.match(pattern);\n    if (match) return match[1];\n  }\n\n  return null;\n}\n\nfunction safeJsonParse(value) {\n  try {\n    return JSON.parse(value);\n  } catch (error) {\n    return null;\n  }\n}\n\nasync function getRawPayloadText(item, itemIndex, helpers) {\n  const binaryKeys = Object.keys(item.binary || {});\n\n  if (binaryKeys.length > 0) {\n    const binaryPropertyName = binaryKeys.includes('data') ? 'data' : binaryKeys[0];\n    const binaryMeta = item.binary[binaryPropertyName] || {};\n    const fileName =\n      binaryMeta.fileName ||\n      item.json?.message?.document?.file_name ||\n      item.json?.message?.document?.fileName ||\n      null;\n\n    const buffer = await helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);\n    const raw = buffer.toString('utf8').trim();\n\n    if (!isNonEmptyString(raw)) {\n      fail('File JSON Telegram kosong atau tidak bisa dibaca sebagai UTF-8.', {\n        binary_property: binaryPropertyName,\n        file_name: fileName\n      });\n    }\n\n    return {\n      raw,\n      input_type: 'telegram_json_file',\n      binary_property: binaryPropertyName,\n      file_name: fileName\n    };\n  }\n\n  const text = item.json?.message?.text;\n\n  if (isNonEmptyString(text)) {\n    return {\n      raw: text.trim(),\n      input_type: 'telegram_text',\n      binary_property: null,\n      file_name: null\n    };\n  }\n\n  fail('Payload Telegram tidak ditemukan. Kirim JSON sebagai message.text atau upload file .json, dan pastikan Telegram Trigger1 Additional Fields > Download aktif.', {\n    available_json_keys: Object.keys(item.json || {}),\n    has_binary: Boolean(item.binary),\n    document: item.json?.message?.document || null\n  });\n}\n\nfunction parsePayload(rawInput) {\n  let parsed = safeJsonParse(rawInput.raw);\n\n  if (parsed === null) {\n    fail('Payload Telegram bukan JSON valid pada parse pertama.', {\n      input_type: rawInput.input_type,\n      file_name: rawInput.file_name,\n      text_preview: rawInput.raw.slice(0, 500)\n    });\n  }\n\n  if (typeof parsed === 'string') {\n    const secondParsed = safeJsonParse(parsed.trim());\n\n    if (secondParsed === null) {\n      fail('Payload Telegram berhasil parse pertama, tapi gagal parse kedua.', {\n        input_type: rawInput.input_type,\n        file_name: rawInput.file_name,\n        first_parse_type: typeof parsed,\n        first_parse_preview: parsed.slice(0, 500)\n      });\n    }\n\n    parsed = secondParsed;\n  }\n\n  if (!isObject(parsed)) {\n    fail('Payload hasil parse harus berupa object JSON.', {\n      input_type: rawInput.input_type,\n      file_name: rawInput.file_name,\n      parsed_type: typeof parsed\n    });\n  }\n\n  return parsed;\n}\n\nfunction validatePayload(payload) {\n  const errors = [];\n\n  const videoId = extractYoutubeVideoId(\n    payload.source ||\n    payload.video_id ||\n    payload.source_video?.video_id ||\n    payload.render_payload?.source_video?.video_id\n  );\n\n  if (!videoId) {\n    errors.push({\n      field: 'video_id/source/source_video.video_id/render_payload.source_video.video_id',\n      message: 'Wajib berisi YouTube URL valid atau video_id 11 karakter.'\n    });\n  }\n\n  if (!Number.isInteger(payload.num_clips) || payload.num_clips < 1) {\n    errors.push({\n      field: 'num_clips',\n      message: 'num_clips wajib integer minimal 1.'\n    });\n  }\n\n  const allowedQuality = ['720', '1080', '1440', '2160'];\n\n  if (!allowedQuality.includes(String(payload.quality))) {\n    errors.push({\n      field: 'quality',\n      message: `quality harus salah satu dari: ${allowedQuality.join(', ')}.`\n    });\n  }\n\n  if (!isNonEmptyString(payload.languages)) {\n    errors.push({\n      field: 'languages',\n      message: 'languages wajib string, contoh: id,en.'\n    });\n  }\n\n  if (!isObject(payload.render_payload)) {\n    errors.push({\n      field: 'render_payload',\n      message: 'render_payload wajib object.'\n    });\n  }\n\n  if (errors.length > 0) {\n    fail('Payload utama tidak valid.', { errors });\n  }\n\n  const rp = payload.render_payload;\n\n  if (!Number.isInteger(rp.clip_index) || rp.clip_index < 1) {\n    fail('render_payload.clip_index wajib integer minimal 1.');\n  }\n\n  if (!isValidNumber(rp.viral_score) || rp.viral_score < 0 || rp.viral_score > 10) {\n    fail('render_payload.viral_score wajib number antara 0 sampai 10.');\n  }\n\n  if (!isNonEmptyString(rp.clip_type)) {\n    fail('render_payload.clip_type wajib string.');\n  }\n\n  if (!isValidNumber(rp.start)) {\n    fail('render_payload.start wajib number.');\n  }\n\n  if (!isValidNumber(rp.end)) {\n    fail('render_payload.end wajib number.');\n  }\n\n  if (rp.end <= rp.start) {\n    fail('render_payload.end harus lebih besar dari start.', {\n      start: rp.start,\n      end: rp.end\n    });\n  }\n\n  if (!isValidNumber(rp.duration) || rp.duration <= 0) {\n    fail('render_payload.duration wajib number lebih dari 0.');\n  }\n\n  const calculatedDuration = Number((rp.end - rp.start).toFixed(2));\n\n  if (Math.abs(calculatedDuration - rp.duration) > 0.3) {\n    fail('render_payload.duration tidak sesuai dengan end - start.', {\n      provided_duration: rp.duration,\n      calculated_duration: calculatedDuration\n    });\n  }\n\n  if (!isObject(rp.hook_3_5_seconds)) {\n    fail('render_payload.hook_3_5_seconds wajib object.');\n  }\n\n  const hook = rp.hook_3_5_seconds;\n\n  if (!isValidNumber(hook.start) || !isValidNumber(hook.end)) {\n    fail('hook_3_5_seconds.start dan end wajib number.');\n  }\n\n  if (hook.end <= hook.start) {\n    fail('hook_3_5_seconds.end harus lebih besar dari start.');\n  }\n\n  if (hook.start < rp.start || hook.end > rp.end) {\n    fail('hook_3_5_seconds harus berada di dalam range clip.', {\n      clip_start: rp.start,\n      clip_end: rp.end,\n      hook_start: hook.start,\n      hook_end: hook.end\n    });\n  }\n\n  if (!isNonEmptyString(hook.text)) {\n    fail('hook_3_5_seconds.text wajib string.');\n  }\n\n  if (!Array.isArray(rp.selected_transcript) || rp.selected_transcript.length === 0) {\n    fail('render_payload.selected_transcript wajib array dan tidak boleh kosong.');\n  }\n\n  rp.selected_transcript.forEach((segment, index) => {\n    if (!isObject(segment)) {\n      fail(`selected_transcript[${index}] wajib object.`);\n    }\n\n    if (!isValidNumber(segment.start)) {\n      fail(`selected_transcript[${index}].start wajib number.`);\n    }\n\n    if (!isValidNumber(segment.end)) {\n      fail(`selected_transcript[${index}].end wajib number.`);\n    }\n\n    if (segment.end <= segment.start) {\n      fail(`selected_transcript[${index}].end harus lebih besar dari start.`);\n    }\n\n    if (!isNonEmptyString(segment.text)) {\n      fail(`selected_transcript[${index}].text wajib string.`);\n    }\n  });\n\n  if (!isObject(rp.youtube_metadata)) {\n    fail('render_payload.youtube_metadata wajib object.');\n  }\n\n  if (!isNonEmptyString(rp.youtube_metadata.title)) {\n    fail('youtube_metadata.title wajib string.');\n  }\n\n  if (!isNonEmptyString(rp.youtube_metadata.description)) {\n    fail('youtube_metadata.description wajib string.');\n  }\n\n  if (!Array.isArray(rp.youtube_metadata.hashtags) || rp.youtube_metadata.hashtags.length === 0) {\n    fail('youtube_metadata.hashtags wajib array dan tidak boleh kosong.');\n  }\n\n  rp.youtube_metadata.hashtags.forEach((tag, index) => {\n    if (!isNonEmptyString(tag)) {\n      fail(`youtube_metadata.hashtags[${index}] wajib string.`);\n    }\n\n    if (!tag.startsWith('#')) {\n      fail(`youtube_metadata.hashtags[${index}] harus diawali #.`);\n    }\n  });\n\n  if (!isObject(rp.subtitle_recommendation)) {\n    fail('render_payload.subtitle_recommendation wajib object.');\n  }\n\n  if (!isNonEmptyString(rp.subtitle_recommendation.style)) {\n    fail('subtitle_recommendation.style wajib string.');\n  }\n\n  if (\n    !Number.isInteger(rp.subtitle_recommendation.max_words_per_line) ||\n    rp.subtitle_recommendation.max_words_per_line < 1 ||\n    rp.subtitle_recommendation.max_words_per_line > 8\n  ) {\n    fail('subtitle_recommendation.max_words_per_line wajib integer antara 1 sampai 8.');\n  }\n\n  if (!isObject(rp.editing_recommendation)) {\n    fail('render_payload.editing_recommendation wajib object.');\n  }\n\n  if (\n    !Array.isArray(rp.editing_recommendation.recommended_cut_style) ||\n    rp.editing_recommendation.recommended_cut_style.length === 0\n  ) {\n    fail('editing_recommendation.recommended_cut_style wajib array dan tidak boleh kosong.');\n  }\n\n  return {\n    video_id: videoId,\n    calculated_duration: calculatedDuration\n  };\n}\n\nconst output = [];\nconst items = $input.all();\n\nfor (let index = 0; index < items.length; index++) {\n  const item = items[index];\n  const rawInput = await getRawPayloadText(item, index, this.helpers);\n  const payload = parsePayload(rawInput);\n  const validationResult = validatePayload(payload);\n  const message = item.json?.message || {};\n\n  output.push({\n    json: {\n      source: `https://youtu.be/${validationResult.video_id}`,\n      video_id: validationResult.video_id,\n      num_clips: payload.num_clips,\n      quality: String(payload.quality),\n      languages: payload.languages.trim(),\n\n      render_payload: {\n        ...payload.render_payload,\n        calculated_duration: validationResult.calculated_duration\n      },\n\n      source_video: payload.source_video || payload.render_payload.source_video || {\n        video_id: validationResult.video_id,\n        job_id: null,\n        status: null\n      },\n\n      telegram: {\n        update_id: item.json?.update_id ?? null,\n        message_id: message.message_id ?? null,\n        chat_id: message.chat?.id ?? null,\n        username: message.from?.username ?? null,\n        first_name: message.from?.first_name ?? null,\n        last_name: message.from?.last_name ?? null,\n        input_type: rawInput.input_type,\n        file_name: rawInput.file_name,\n        binary_property: rawInput.binary_property\n      },\n\n      validation: {\n        valid: true,\n        message: 'Payload Telegram JSON berhasil diparse dan siap diproses.'\n      }\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        128
+      ],
+      "id": "2779705a-bba3-487e-8317-e63bbdd3c823",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        640,
+        128
+      ],
+      "id": "f7e13407-cc74-4eee-b114-85bef8e1d4e6",
+      "name": "HTTP Request2"
     },
     {
       "parameters": {
@@ -522,274 +89,26 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2352,
-        1536
+        848,
+        128
       ],
-      "id": "eb92452c-4603-449e-8b43-d387028ab00f",
-      "name": "If5"
+      "id": "7b93466f-6105-4114-97bc-c0893ccc3247",
+      "name": "If7"
     },
     {
       "parameters": {
-        "amount": 10
+        "amount": 1,
+        "unit": "minutes"
       },
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2544,
-        1552
+        1072,
+        144
       ],
-      "id": "43ecad55-3ec2-4e29-83c7-072a8ef41379",
-      "name": "Wait7",
+      "id": "2211a2c2-c3eb-4ff0-ae81-262a2eabf364",
+      "name": "Wait8",
       "webhookId": "d8043f7f-7843-440f-9e93-5357c3c32b73"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/watermark",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer change-me"
-            }
-          ]
-        },
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "source",
-              "value": "={{ $('Remapping Job ID & Video Id').item.json.source }}"
-            },
-            {
-              "name": "watermark_text",
-              "value": "KILASANVIDEO"
-            },
-            {
-              "name": "watermark_mode",
-              "value": "text"
-            },
-            {
-              "name": "watermark_position",
-              "value": "center_15_top"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": true
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        2784,
-        1776
-      ],
-      "id": "515a51d9-1187-4394-8683-69f92abab53c",
-      "name": "Trigger Watermark"
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Render job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: body.step || 'render',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: $('Parse Source & Video ID').item.json.source,\n      video_id: $('Parse Source & Video ID').item.json.video_id\n    }\n  };\n});"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1936,
-        1536
-      ],
-      "id": "1ef9a951-d31c-424c-97a3-d2b19eee9f86",
-      "name": "Remapping Job ID & Video Id"
-    },
-    {
-      "parameters": {
-        "amount": 10
-      },
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        3600,
-        1904
-      ],
-      "id": "8072b51c-f1d0-4b28-ae43-92ebf2dab750",
-      "name": "Wait Watermark",
-      "webhookId": "37804140-9dfa-4bf9-8ac3-2e9a2fffbe20"
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Watermark job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: body.step || 'watermark',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: $('Parse Source & Video ID').item.json.source,\n      video_id: $('Parse Source & Video ID').item.json.video_id\n    }\n  };\n});"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2992,
-        1776
-      ],
-      "id": "b4f8ad95-739e-4450-8cd7-0fe2e5ddb6df",
-      "name": "Remap Watermark Job ID"
-    },
-    {
-      "parameters": {
-        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer change-me"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "name": "Cek Status Watermark",
-      "typeVersion": 4.3,
-      "position": [
-        3200,
-        1776
-      ],
-      "id": "dced9b9e-e110-49fe-bc28-408ca525831d"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "watermark-completed-status",
-              "leftValue": "=completed",
-              "rightValue": "={{ $json.status }}",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        3408,
-        1776
-      ],
-      "id": "0f6b80bc-6df4-4c4f-92dc-6c4f2f6e9221",
-      "name": "If Watermark Completed"
-    },
-    {
-      "parameters": {
-        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}/result",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer change-me"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        3616,
-        1776
-      ],
-      "id": "44964fb5-62b1-4c0f-90bd-4eab4c59bb18",
-      "name": "Get Hasil Watermark"
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n  const artifact = body.artifact_status || {};\n\n  // For watermark step, verify watermarked file exists\n  if (body.step === 'watermark') {\n    const watermarkedCount = artifact.watermarked_count || 0;\n    \n    if (watermarkedCount <= 0) {\n      throw new Error(`Watermark final video tidak ditemukan. artifact_status: ${JSON.stringify(artifact)}`);\n    }\n    \n    if (artifact.missing_expected_artifact) {\n      throw new Error(`Watermark artifact missing. Response: ${JSON.stringify(body)}`);\n    }\n  }\n\n  return item;\n});"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3616,
-        1900
-      ],
-"id": "verify-watermark-artifact",
-      "name": "Verify Watermark Artifact"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/youtube-upload",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {}
-          ]
-        },
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "video_url",
-              "value": "={{ $json.body?.final_video_url || $json.body?.output_url || $json.body?.video_url || $json.body?.artifact_status?.watermarked_files?.[0] || $json.body?.artifact_status?.output_files?.[0] || $json.final_video_url || $json.output_url || $json.video_url || $json.artifact_status?.watermarked_files?.[0] || $json.artifact_status?.output_files?.[0] }}"
-            },
-            {
-              "name": "title",
-              "value": "={{ $('Get Hasil Analisa1').item.json.title || $('Get Hasil Analisa1').item.json.body?.title || 'KILASANVIDEO - Shorts Viral' }}"
-            },
-            {
-              "name": "description",
-              "value": "={{ $('Get Hasil Analisa1').item.json.description || $('Get Hasil Analisa1').item.json.body?.description || 'Video short otomatis dari KILASANVIDEO.' }}"
-            },
-            {
-              "name": "tags",
-              "value": "shorts,viral,hiburan,lucu,kilasanvideo"
-            },
-            {
-              "name": "privacy_status",
-              "value": "public"
-            },
-            {
-              "name": "category_id",
-              "value": "24"
-            },
-            {
-              "name": "source",
-              "value": "={{ $('Parse Source & Video ID').item.json.source }}"
-            },
-            {
-              "name": "video_id",
-              "value": "={{ $('Parse Source & Video ID').item.json.video_id }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        3840,
-        1900
-      ],
-      "id": "upload-to-youtube",
-      "name": "Upload To YouTube",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "qnh8bEUvqFLgPjIQ",
-          "name": "Bearer Auth account"
-        }
-      }
     },
     {
       "parameters": {
@@ -809,11 +128,11 @@
           "parameters": [
             {
               "name": "source",
-              "value": "={{ $('Remapping Job ID & Video Id').item.json.source }}"
+              "value": "={{ $('Code in JavaScript2').first().json.source }}"
             },
             {
               "name": "opening_statement",
-              "value": "Simak momen paling absurd dan lucu berikut ini."
+              "value": "={{ $('Code in JavaScript2').first().json.render_payload.opening_narration.text }}"
             },
             {
               "name": "opening_voice",
@@ -829,7 +148,7 @@
             },
             {
               "name": "opening_thumbnail_title",
-              "value": "MOMEN PALING ABSURD"
+              "value": "={{ $('Code in JavaScript2').first().json.render_payload.youtube_metadata.thumbnail_text }}"
             },
             {
               "name": "opening_thumbnail_font",
@@ -856,24 +175,24 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        1952,
-        1776
+        448,
+        368
       ],
-      "id": "67eb4903-137f-4e67-9fc2-7b49fd286b4a",
-      "name": "Trigger Opening Narration"
+      "id": "da985be4-36eb-4fd2-aeef-e1939322b900",
+      "name": "Trigger Opening Narration2"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Opening job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: body.step || 'opening',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: $('Parse Source & Video ID').item.json.source,\n      video_id: $('Parse Source & Video ID').item.json.video_id\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Opening job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: body.step || 'opening',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: $('Code in JavaScript2').first().json.source,\n      video_id: $('Code in JavaScript2').first().json.video_id\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2160,
-        1776
+        640,
+        368
       ],
-      "id": "a86f67bd-7953-41f0-ae70-9b7c9db13c5f",
-      "name": "Remap Opening Job ID"
+      "id": "91d1e51b-3050-4f55-b74c-a1e36af82227",
+      "name": "Remap Opening Job ID2"
     },
     {
       "parameters": {
@@ -892,11 +211,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        2368,
-        1776
+        848,
+        368
       ],
-      "id": "e8991d32-793f-4ec4-9823-b26ce8c39fac",
-      "name": "Cek Status Opening"
+      "id": "03899e23-a96a-4321-8599-40c061408d04",
+      "name": "Cek Status Opening2"
     },
     {
       "parameters": {
@@ -925,11 +244,343 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2576,
-        1776
+        1232,
+        368
       ],
-      "id": "084df1bd-fe37-4d87-b444-bb0d30b891cc",
-      "name": "If Opening Completed"
+      "id": "39d6cad2-74af-4a97-8118-7eb904a674ac",
+      "name": "If Opening Completed2"
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        384
+      ],
+      "id": "75e215ce-32b4-491a-a32a-c75123ceea9f",
+      "name": "Wait Opening2",
+      "webhookId": "37804140-9dfa-4bf9-8ac3-2e9a2fffbe21"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/subtitle/burn",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "video_path",
+              "value": "={{ $json.subtitle_video_path }}"
+            },
+            {
+              "name": "language",
+              "value": "id"
+            },
+            {
+              "name": "engine",
+              "value": "auto-captions"
+            },
+            {
+              "name": "style",
+              "value": "viral_clip_pro"
+            },
+            {
+              "name": "replace_original",
+              "value": "true"
+            },
+            {
+              "name": "transcribe_model",
+              "value": "medium"
+            },
+            {
+              "name": "transcribe_preset",
+              "value": "accurate"
+            },
+            {
+              "name": "audio_preset",
+              "value": "speech"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        704,
+        608
+      ],
+      "id": "7f3670e4-d851-41ef-907e-de4f520f13c4",
+      "name": "Trigger Subtitle Generator1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $('Trigger Subtitle Generator1').all();\nconst prepared = $('Prepare Subtitle Video Path').first().json;\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Subtitle job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: 'subtitle',\n      status_url: body.status_url || `/subtitle/jobs/${body.job_id}`,\n      result_url: body.result_url || `/subtitle/jobs/${body.job_id}`,\n      source: $('Code in JavaScript2').first().json.source,\n      video_id: $('Code in JavaScript2').first().json.video_id,\n      subtitle_video_path: prepared.subtitle_video_path,\n      subtitle_fallback_video_path: prepared.subtitle_fallback_video_path,\n      clip_index: prepared.clip_index,\n      clip_number: prepared.clip_number\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        608
+      ],
+      "id": "ec3001f3-b401-4b10-b2f3-2befc20891da",
+      "name": "Remap Subtitle Job ID1"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/subtitle/jobs/{{ $json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1136,
+        608
+      ],
+      "id": "a50a5516-f47d-4f24-9561-f46273f167f9",
+      "name": "Cek Status Subtitle1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "subtitle-completed-status",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1504,
+        608
+      ],
+      "id": "d1ef6b00-fbd1-47a2-b075-a374fd8ddc91",
+      "name": "If Subtitle Completed1"
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1744,
+        624
+      ],
+      "id": "b1b404df-d67b-47ce-88d5-465aedc86a05",
+      "name": "Wait Subtitle1",
+      "webhookId": "37804140-9dfa-4bf9-8ac3-2e9a2fffbe22"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/steps/watermark",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $('Code in JavaScript2').first().json.source }}"
+            },
+            {
+              "name": "watermark_text",
+              "value": "KILASANVIDEO"
+            },
+            {
+              "name": "watermark_mode",
+              "value": "text"
+            },
+            {
+              "name": "watermark_position",
+              "value": "center_15_top"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        400,
+        880
+      ],
+      "id": "15288432-df77-4a03-abe0-1ea0e62bf0fe",
+      "name": "Trigger Watermark2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Watermark job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      job_id: body.job_id,\n      step: body.step || 'watermark',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: $('Code in JavaScript2').first().json.source,\n      video_id:$('Code in JavaScript2').first().json.video_id\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        880
+      ],
+      "id": "907917cd-9644-4729-87f8-b83d76eed88b",
+      "name": "Remap Watermark Job ID2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Code in JavaScript2').first().json;\n\nreturn $input.all().map(item => {\n  const body = item.json.body || item.json;\n\n  if (!body.job_id) {\n    throw new Error(`Render job_id tidak ditemukan. Response: ${JSON.stringify(item.json)}`);\n  }\n\n  return {\n    json: {\n      ...body,\n      job_id: body.job_id,\n      step: body.step || 'render',\n      status_url: body.status_url || `/jobs/${body.job_id}`,\n      result_url: body.result_url || `/jobs/${body.job_id}/result`,\n      source: original.source,\n      video_id: original.video_id,\n      original_payload: original\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        128
+      ],
+      "id": "390de2af-5887-45ba-85bd-bf75c2fa269f",
+      "name": "Remap Render Job ID1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Remap Render Job ID1').first().json;\n\nreturn $input.all().map(item => {\n  const body = item.json.body || item.json;\n\n  return {\n    json: {\n      ...body,\n      job_id: body.job_id || ctx.job_id,\n      step: body.step || ctx.step || 'render',\n      status_url: body.status_url || ctx.status_url || `/jobs/${ctx.job_id}`,\n      result_url: body.result_url || ctx.result_url || `/jobs/${ctx.job_id}/result`,\n      source: ctx.source,\n      video_id: ctx.video_id,\n      original_payload: ctx.original_payload\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        128
+      ],
+      "id": "9eba60ef-5ecf-4107-b3ee-f4698686c732",
+      "name": "Keep Render Status Context1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Remap Opening Job ID2').first().json;\n\nreturn $input.all().map(item => {\n  const body = item.json.body || item.json;\n\n  return {\n    json: {\n      ...body,\n      job_id: body.job_id || ctx.job_id,\n      step: body.step || ctx.step || 'opening',\n      status_url: body.status_url || ctx.status_url || `/jobs/${ctx.job_id}`,\n      result_url: body.result_url || ctx.result_url || `/jobs/${ctx.job_id}/result`,\n      source: ctx.source,\n      video_id: ctx.video_id\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        368
+      ],
+      "id": "862127d1-ede6-4e65-b26c-21e28a6168e7",
+      "name": "Keep Opening Status Context2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Remap Subtitle Job ID1').first().json;\n\nreturn $input.all().map(item => {\n  const body = item.json.body || item.json;\n\n  return {\n    json: {\n      ...body,\n      job_id: body.job_id || ctx.job_id,\n      step: body.step || ctx.step || 'subtitle',\n      status_url: body.status_url || ctx.status_url || `/subtitle/jobs/${ctx.job_id}`,\n      result_url: body.result_url || ctx.result_url || `/subtitle/jobs/${ctx.job_id}`,\n      source: ctx.source,\n      video_id: ctx.video_id,\n      subtitle_video_path: ctx.subtitle_video_path,\n      subtitle_fallback_video_path: ctx.subtitle_fallback_video_path,\n      clip_index: ctx.clip_index,\n      clip_number: ctx.clip_number\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        608
+      ],
+      "id": "11b3c041-c4dd-40c0-b31f-cd6ee631395d",
+      "name": "Keep Subtitle Status Context1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Code in JavaScript2').first().json;\nconst current = $input.first().json;\n\nconst videoId = original.video_id;\nif (!videoId) {\n  throw new Error('video_id tidak ditemukan dari payload utama');\n}\n\nconst sourceClipIndex = Number(original.render_payload?.clip_index || 1);\nif (!Number.isInteger(sourceClipIndex) || sourceClipIndex < 1) {\n  throw new Error(`render_payload.clip_index tidak valid: ${original.render_payload?.clip_index}`);\n}\n\n// Setiap eksekusi merender satu highlight setelah cleansing, sehingga file fisik\n// selalu ditulis sebagai shorts/short_01.mp4 walaupun clip_index sumber adalah 2+.\nconst renderedClipNumber = '01';\nconst sourceClipNumber = String(sourceClipIndex).padStart(2, '0');\nconst baseDir = `/Users/agusrachman/Documents/Codex/content-short/storage/free-viral-shorts/${videoId}`;\n\nreturn [\n  {\n    json: {\n      ...current,\n      video_id: current.video_id || videoId,\n      subtitle_video_path: `${baseDir}/shorts/short_${renderedClipNumber}.mp4`,\n      subtitle_fallback_video_path: `${baseDir}/shorts/short_${renderedClipNumber}.mp4`,\n      opening_expected_temp_path: `${baseDir}/opening/short_${renderedClipNumber}_with_opening.mp4`,\n      clip_index: sourceClipIndex,\n      clip_number: renderedClipNumber,\n      source_clip_number: sourceClipNumber\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        608
+      ],
+      "id": "e63ffe07-0b98-4c19-9774-9be778ba3c90",
+      "name": "Prepare Subtitle Video Path"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "watermark-completed-status",
+              "leftValue": "=completed",
+              "rightValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1008,
+        880
+      ],
+      "id": "6ca487be-89b0-4b15-94aa-eef766a141ae",
+      "name": "If Watermark Completed3"
     },
     {
       "parameters": {
@@ -938,414 +589,528 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2576,
-        1936
+        1264,
+        1088
       ],
-      "id": "76857dff-d156-4b4d-92ea-868c5723aa8e",
-      "name": "Wait Opening",
-      "webhookId": "37804140-9dfa-4bf9-8ac3-2e9a2fffbe21"
+      "id": "4992ed48-9eb9-4147-9a88-7dd155af150e",
+      "name": "Wait Watermark3",
+      "webhookId": "37804140-9dfa-4bf9-8ac3-2e9a2fffbe20"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        832,
+        880
+      ],
+      "id": "54eba2b8-88ce-44d4-bc35-54f582451729",
+      "name": "Cek Status Watermark3"
+    },
+    {
+      "parameters": {
+        "url": "=https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/{{ $json.job_id }}/result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1264,
+        864
+      ],
+      "id": "41b8cfda-17b4-48ed-905f-7f700e15bb09",
+      "name": "Get Watermark Result2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Telegram Payload - Perfect JSON Formatter for Telegram Chat\nconst original = $('Code in JavaScript2').first().json;\nconst result = $input.first().json;\n\nconst API_BASE_URL = 'http://localhost:8088';\n\nconst renderPayload = original.render_payload || {};\nconst yt = renderPayload.youtube_metadata;\n\nif (!yt) {\n  throw new Error('youtube_metadata tidak ditemukan dari render_payload');\n}\n\nconst video_id = original.video_id || original.source_video?.video_id || renderPayload.source_video?.video_id;\n\nif (!video_id) {\n  throw new Error('video_id tidak ditemukan dari original payload');\n}\n\nlet files = Array.isArray(result.files) ? result.files : [];\n\n// Fallback: jika files kosong, gunakan path local storage langsung\nlet watermarkedVideo = null;\n\nif (files.length === 0) {\n  const relativePath = `free-viral-shorts/${video_id}/watermarked/${video_id}_wm.mp4`;\n\n  watermarkedVideo = {\n    filename: `${video_id}_wm.mp4`,\n    path: relativePath,\n    absolute_path: `/Users/agusrachman/Documents/Codex/content-short/storage/${relativePath}`,\n    download_url: `${API_BASE_URL}/storage/${relativePath}`\n  };\n\n  console.log('[FALLBACK] Using local storage path:', relativePath);\n} else {\n  watermarkedVideo =\n    files.find(file =>\n      file.filename?.endsWith('.mp4') &&\n      (\n        file.filename.includes('_wm') ||\n        file.path?.includes('/watermarked/') ||\n        file.absolute_path?.includes('/watermarked/')\n      )\n    ) ||\n    files.find(file => file.filename?.endsWith('.mp4'));\n}\n\nif (!watermarkedVideo) {\n  throw new Error(`File video watermark tidak ditemukan. files=${JSON.stringify(files)}`);\n}\n\nconst rawVideoPath =\n  watermarkedVideo.absolute_path ||\n  watermarkedVideo.file_path ||\n  watermarkedVideo.path ||\n  null;\n\nconst video_path = rawVideoPath?.startsWith('/')\n  ? rawVideoPath\n  : rawVideoPath\n    ? `/Users/agusrachman/Documents/Codex/content-short/storage/${rawVideoPath}`\n    : null;\n\nconst video_download_url =\n  watermarkedVideo.download_url ||\n  (\n    watermarkedVideo.url\n      ? `${API_BASE_URL}${watermarkedVideo.url.startsWith('/') ? '' : '/'}${watermarkedVideo.url}`\n      : null\n  );\n\nif (!video_download_url) {\n  throw new Error(`Download URL video tidak ditemukan: ${JSON.stringify(watermarkedVideo)}`);\n}\n\nconst hashtags = Array.isArray(yt.hashtags)\n  ? yt.hashtags.join(' ')\n  : typeof yt.hashtags === 'string'\n    ? yt.hashtags\n    : '';\n\nconst hookText = renderPayload.hook_3_5_seconds?.text || '-';\nconst thumbnailText = yt.thumbnail_text || '-';\nconst viralScore = renderPayload.viral_score ?? '-';\nconst clipType = renderPayload.clip_type || '-';\nconst duration = renderPayload.duration || renderPayload.calculated_duration || '-';\n\nconst caption = [\n  yt.title || 'Video pendek',\n  hashtags\n]\n  .filter(Boolean)\n  .join('\\n\\n')\n  .slice(0, 1024);\n\n// Object ini yang akan ditampilkan sebagai JSON rapi di Telegram\nconst metadataObject = {\n  status: 'success',\n  message: 'Render Watermark Selesai',\n  video_id,\n  video_path,\n  video_download_url,\n  caption,\n  metadata: {\n    title: yt.title || '-',\n    description: yt.description || '-',\n    hashtags: hashtags || '-',\n    thumbnail_text: thumbnailText,\n    hook: hookText,\n    viral_score: viralScore,\n    clip_type: clipType,\n    duration_seconds: duration,\n    source_video_id: video_id\n  },\n  file: {\n    filename: watermarkedVideo.filename || '-',\n    path: video_path,\n    download_url: video_download_url\n  }\n};\n\n// Pretty JSON untuk chat Telegram\nconst metadata_text = JSON.stringify(metadataObject, null, 2);\n\n// Versi markdown code block agar tampil seperti JSON formatter di Telegram\nconst telegram_text = [\n  '✅ Render Watermark Selesai',\n  '',\n  '```json',\n  metadata_text,\n  '```'\n].join('\\n');\n\nreturn [\n  {\n    json: {\n      video_id,\n      video_path,\n      video_download_url,\n      caption,\n      metadata_text,\n      telegram_text,\n      filename: watermarkedVideo.filename || video_path || video_download_url\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        864
+      ],
+      "id": "ff80d031-14d9-4649-a8d3-6ff6d342584f",
+      "name": "Prepare Telegram Payload2"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.video_download_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1632,
+        864
+      ],
+      "id": "a93c0227-eba2-449a-a694-ab8e582acbd8",
+      "name": "Download Watermark Video2",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qnh8bEUvqFLgPjIQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "public": true,
+        "options": {
+          "allowFileUploads": true,
+          "allowedFilesMimeTypes": "*",
+          "responseMode": "lastNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -832,
+        128
+      ],
+      "id": "33ea6b3a-42da-4b9a-851f-c868b7f19881",
+      "name": "When chat message received",
+      "webhookId": "8d146e8f-a39b-4b01-a239-dd6d97e6b795"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://authentic-linguist-scoundrel.ngrok-free.dev/jobs/cleanup/video",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer change-me"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  video_id: $json.video_id,\n  delete_assets: true,\n  delete_artifacts: true,\n  delete_jobs: true,\n  delete_source_video: false,\n  delete_transcripts: false\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -416,
+        128
+      ],
+      "id": "b97368c1-2be7-49dc-b7d1-524e94e63bef",
+      "name": "Cleanup Existing Video Artifacts"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cleanup = $input.first().json;\nconst status = cleanup.body?.status || cleanup.status;\n\nif (status && status !== 'completed') {\n  throw new Error(`Cleanup artifact gagal. Response: ${JSON.stringify(cleanup)}`);\n}\n\nreturn [\n  {\n    json: $('Code in JavaScript2').first().json\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        128
+      ],
+      "id": "keep-cleanup-context-node-id",
+      "name": "Keep Cleanup Context"
     }
   ],
   "connections": {
-    "test": {
+    "HTTP Request1": {
       "main": [
         [
           {
-            "node": "Parse Source & Video ID",
+            "node": "Remap Render Job ID1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse Source & Video ID": {
+    "Code in JavaScript2": {
       "main": [
         [
           {
-            "node": "Download1",
+            "node": "Cleanup Existing Video Artifacts",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Cek Status Render": {
+    "HTTP Request2": {
       "main": [
         [
           {
-            "node": "If5",
+            "node": "Keep Render Status Context1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "If3": {
+    "If7": {
       "main": [
         [
           {
-            "node": "Ekstract Trunscribe1",
+            "node": "Trigger Opening Narration2",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Wait4",
+            "node": "Wait8",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait4": {
+    "Wait8": {
       "main": [
         [
           {
-            "node": "Check Status Download1",
+            "node": "HTTP Request2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Download1": {
+    "Trigger Opening Narration2": {
       "main": [
         [
           {
-            "node": "Check Status Download1",
+            "node": "Remap Opening Job ID2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Status Download1": {
+    "Remap Opening Job ID2": {
       "main": [
         [
           {
-            "node": "If3",
+            "node": "Cek Status Opening2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait5": {
+    "Cek Status Opening2": {
       "main": [
         [
           {
-            "node": "Check Status Extract transcribe1",
+            "node": "Keep Opening Status Context2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Ekstract Trunscribe1": {
+    "If Opening Completed2": {
       "main": [
         [
           {
-            "node": "Check Status Extract transcribe1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Status Extract transcribe1": {
-      "main": [
-        [
-          {
-            "node": "if1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "if1": {
-      "main": [
-        [
-          {
-            "node": "Analisa Video1",
+            "node": "Prepare Subtitle Video Path",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Wait5",
+            "node": "Wait Opening2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "If4": {
+    "Wait Opening2": {
       "main": [
         [
           {
-            "node": "Get Hasil Analisa1",
+            "node": "Cek Status Opening2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Subtitle Generator1": {
+      "main": [
+        [
+          {
+            "node": "Remap Subtitle Job ID1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remap Subtitle Job ID1": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Subtitle1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status Subtitle1": {
+      "main": [
+        [
+          {
+            "node": "Keep Subtitle Status Context1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Subtitle Completed1": {
+      "main": [
+        [
+          {
+            "node": "Trigger Watermark2",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Wait6",
+            "node": "Wait Subtitle1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait6": {
+    "Wait Subtitle1": {
       "main": [
         [
           {
-            "node": "Cek Status Analisa2",
+            "node": "Cek Status Subtitle1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Analisa Video1": {
+    "Trigger Watermark2": {
       "main": [
         [
           {
-            "node": "Cek Status Analisa2",
+            "node": "Remap Watermark Job ID2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Cek Status Analisa2": {
+    "Remap Watermark Job ID2": {
       "main": [
         [
           {
-            "node": "If4",
+            "node": "Cek Status Watermark3",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get Hasil Analisa1": {
+    "Remap Render Job ID1": {
       "main": [
         [
           {
-            "node": "Rander Video1",
+            "node": "HTTP Request2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Rander Video1": {
+    "Keep Render Status Context1": {
       "main": [
         [
           {
-            "node": "Remapping Job ID & Video Id",
+            "node": "If7",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "If5": {
+    "Keep Opening Status Context2": {
       "main": [
         [
           {
-            "node": "Trigger Opening Narration",
+            "node": "If Opening Completed2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Subtitle Status Context1": {
+      "main": [
+        [
+          {
+            "node": "If Subtitle Completed1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Subtitle Video Path": {
+      "main": [
+        [
+          {
+            "node": "Trigger Subtitle Generator1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Watermark Completed3": {
+      "main": [
+        [
+          {
+            "node": "Get Watermark Result2",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Wait7",
+            "node": "Wait Watermark3",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait7": {
+    "Wait Watermark3": {
       "main": [
         [
           {
-            "node": "Cek Status Render",
+            "node": "Cek Status Watermark3",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Remapping Job ID & Video Id": {
+    "Cek Status Watermark3": {
       "main": [
         [
           {
-            "node": "Cek Status Render",
+            "node": "If Watermark Completed3",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Trigger Watermark": {
+    "Get Watermark Result2": {
       "main": [
         [
           {
-            "node": "Remap Watermark Job ID",
+            "node": "Prepare Telegram Payload2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Remap Watermark Job ID": {
+    "Prepare Telegram Payload2": {
       "main": [
         [
           {
-            "node": "Cek Status Watermark",
+            "node": "Download Watermark Video2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Cek Status Watermark": {
+    "Download Watermark Video2": {
+      "main": [
+        []
+      ]
+    },
+    "When chat message received": {
       "main": [
         [
           {
-            "node": "If Watermark Completed",
+            "node": "Code in JavaScript2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "If Watermark Completed": {
+    "Cleanup Existing Video Artifacts": {
       "main": [
         [
           {
-            "node": "Get Hasil Watermark",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Wait Watermark",
+            "node": "Keep Cleanup Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait Watermark": {
+    "Keep Cleanup Context": {
       "main": [
         [
           {
-            "node": "Cek Status Watermark",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Trigger Opening Narration": {
-      "main": [
-        [
-          {
-            "node": "Remap Opening Job ID",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Remap Opening Job ID": {
-      "main": [
-        [
-          {
-            "node": "Cek Status Opening",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Cek Status Opening": {
-      "main": [
-        [
-          {
-            "node": "If Opening Completed",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If Opening Completed": {
-      "main": [
-        [
-          {
-            "node": "Trigger Watermark",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Wait Opening",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait Opening": {
-      "main": [
-        [
-          {
-            "node": "Cek Status Opening",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Hasil Watermark": {
-      "main": [
-        [
-          {
-            "node": "Verify Watermark Artifact",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-"Verify Watermark Artifact": {
-      "main": [
-        [
-          {
-            "node": "Upload To YouTube",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upload To YouTube": {
-      "main": [
-        [
-          {
-            "node": "Trigger Opening Narration",
+            "node": "HTTP Request1",
             "type": "main",
             "index": 0
           }

@@ -24,6 +24,7 @@ from pydantic import BaseModel
 # Import subtitle service
 from subtitle_service.config import get_settings as get_subtitle_settings
 from subtitle_service.api import create_subtitle_router as create_subtitle_router_raw
+from transcript_utils import find_downloaded_video, convert_word_timestamps_to_transcript_files
 
 app = FastAPI(
     title="Content Short API",
@@ -58,6 +59,32 @@ API_JOBS_DIR = STORAGE_DIR / "api-jobs"
 API_TOKEN = os.environ.get("CONTENT_SHORT_API_TOKEN", "change-me")
 FFMPEG_BIN = os.environ.get("FFMPEG_BIN", "/usr/bin/ffmpeg")
 CV_PYTHON_BIN = os.environ.get("CV_PYTHON_BIN", sys.executable)
+
+THUMBNAIL_ASSET_DIR = APP_DIR / "assets" / "thumbnail"
+THUMBNAIL_ASSET_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
+
+def find_static_opening_thumbnail(video_id: str) -> Optional[Path]:
+    for ext in THUMBNAIL_ASSET_EXTENSIONS:
+        path = THUMBNAIL_ASSET_DIR / f"{video_id}{ext}"
+        if path.is_file() and path.stat().st_size > 0:
+            return path
+    return None
+
+
+def is_opening_watermarked_input(path: Path) -> bool:
+    return (
+        path.is_file()
+        and path.name.endswith("_wm.mp4")
+        and "_telegram" not in path.stem
+        and path.stat().st_size > 0
+    )
+
+
+def find_opening_watermarked_inputs(run_dir: Path) -> list[Path]:
+    watermarked_dir = run_dir / "watermarked"
+    if not watermarked_dir.exists():
+        return []
+    return sorted(path for path in watermarked_dir.glob("*_wm.mp4") if is_opening_watermarked_input(path))
 
 # Python binary for audio fallback transcription (needs whisper installed)
 # Priority: SUBTITLE_AUTOCAPTIONS_PYTHON env > VENV_DIR bin/python > explicit transcript venv
@@ -131,7 +158,7 @@ def find_active_step_jobs(video_id: str, step: str) -> list[dict]:
 
 def normalize_process_output(value) -> str:
     """Normalize process output to string.
-    
+
     Handles None, bytes, and str inputs.
     - None becomes empty string
     - bytes are decoded with utf-8 (errors replaced)
@@ -149,7 +176,7 @@ def normalize_process_output(value) -> str:
 
 def combine_process_output(stdout, stderr) -> str:
     """Combine stdout and stderr into single output string.
-    
+
     Both arguments are normalized before combining.
     """
     parts = [
@@ -161,26 +188,26 @@ def combine_process_output(stdout, stderr) -> str:
 
 def save_job_process_logs(job_id: str, stdout, stderr) -> dict:
     """Save full stdout/stderr to log files.
-    
+
     Returns dict with paths to log files (relative to STORAGE_DIR).
     Handles None, bytes, and str inputs.
     """
     log_paths = {}
-    
+
     # Normalize stdout
     stdout_str = normalize_process_output(stdout)
     if stdout_str:
         stdout_file = API_JOBS_DIR / f"{job_id}.stdout.log"
         stdout_file.write_text(stdout_str)
         log_paths["stdout_log"] = str(stdout_file.relative_to(STORAGE_DIR))
-    
+
     # Normalize stderr
     stderr_str = normalize_process_output(stderr)
     if stderr_str:
         stderr_file = API_JOBS_DIR / f"{job_id}.stderr.log"
         stderr_file.write_text(stderr_str)
         log_paths["stderr_log"] = str(stderr_file.relative_to(STORAGE_DIR))
-    
+
     return log_paths
 
 
@@ -205,7 +232,7 @@ def validate_mp4_file(file_path: Path) -> tuple[bool, Optional[str]]:
     """
     Validate MP4 file exists and is readable with valid duration.
     Returns (is_valid, error_message).
-    
+
     Checks:
     - File exists
     - File size > 0
@@ -214,10 +241,10 @@ def validate_mp4_file(file_path: Path) -> tuple[bool, Optional[str]]:
     """
     if not file_path.exists():
         return (False, f"File does not exist: {file_path}")
-    
+
     if file_path.stat().st_size == 0:
         return (False, f"File is empty: {file_path}")
-    
+
     # Use ffprobe to check duration
     try:
         result = subprocess.run(
@@ -232,10 +259,10 @@ def validate_mp4_file(file_path: Path) -> tuple[bool, Optional[str]]:
             text=True,
             timeout=30
         )
-        
+
         if result.returncode != 0:
             return (False, f"ffprobe failed for {file_path}: {result.stderr}")
-        
+
         try:
             data = json.loads(result.stdout)
             duration = data.get("format", {}).get("duration")
@@ -245,12 +272,12 @@ def validate_mp4_file(file_path: Path) -> tuple[bool, Optional[str]]:
                 return (False, f"Invalid duration in {file_path}: {duration}")
         except (json.JSONDecodeError, ValueError) as e:
             return (False, f"Cannot parse ffprobe output for {file_path}: {e}")
-    
+
     except subprocess.TimeoutExpired:
         return (False, f"ffprobe timed out for {file_path}")
     except Exception as e:
         return (False, f"ffprobe error for {file_path}: {e}")
-    
+
     return (True, None)
 
 
@@ -290,23 +317,23 @@ def validate_audio_stream(file_path: Path) -> tuple[bool, Optional[str]]:
 
 def validate_opening_result(run_dir: Path) -> tuple[bool, Optional[str]]:
     """
-    Validate opening step result by checking shorts/*.mp4 directly.
+    Validate opening step result by checking watermarked/*_wm.mp4 directly.
 
     The opening narrator script:
     1. Creates temporary opening video in opening/ directory
-    2. Merges with original short
-    3. Overwrites shorts/short_XX.mp4 with the merged result
+    2. Merges with the non-Telegram watermarked video
+    3. Overwrites watermarked/short_XX_wm.mp4 with the merged result
     4. Attempts to clean up opening/ directory
 
-    We validate by checking shorts/*.mp4 for valid duration + audio.
+    Telegram delivery variants are intentionally ignored.
     """
-    shorts_dir = run_dir / "shorts"
-    if not shorts_dir.exists():
-        return (False, f"shorts directory does not exist: {shorts_dir}")
+    watermarked_dir = run_dir / "watermarked"
+    if not watermarked_dir.exists():
+        return (False, f"watermarked directory does not exist: {watermarked_dir}")
 
-    mp4_files = sorted(shorts_dir.glob("short_*.mp4"))
+    mp4_files = find_opening_watermarked_inputs(run_dir)
     if not mp4_files:
-        return (False, f"No short_*.mp4 files found in {shorts_dir}")
+        return (False, f"No non-Telegram *_wm.mp4 files found in {watermarked_dir}")
 
     # Validate each short - at least one must be valid
     valid_outputs = 0
@@ -327,30 +354,12 @@ def validate_opening_result(run_dir: Path) -> tuple[bool, Optional[str]]:
     return (True, None)
 
 
-def find_downloaded_video(video_id: str) -> Optional[Path]:
-    """Find the most recent downloaded video file for a given video_id.
-    
-    Searches VIDEO_DIR for video files matching the video_id.
-    Returns the most recent non-empty file, or None if not found.
-    """
-    extensions = {".mp4", ".mkv", ".webm", ".mov"}
-    if not VIDEO_DIR.exists():
-        return None
 
-    matches = [
-        path
-        for path in VIDEO_DIR.iterdir()
-        if path.is_file()
-        and video_id in path.name
-        and path.suffix.lower() in extensions
-        and path.stat().st_size > 0
-    ]
-    if not matches:
-        return None
-    
-    # Sort by modification time, most recent first
-    matches.sort(key=lambda path: path.stat().st_mtime, reverse=True)
-    return matches[0]
+
+def _log_fallback(msg: str) -> None:
+    """Print a timestamped fallback log line."""
+    ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    print(f"[audio-fallback {ts}] {msg}", flush=True)
 
 
 def run_audio_fallback_transcription(
@@ -359,25 +368,25 @@ def run_audio_fallback_transcription(
     language: str = "id",
 ) -> Path:
     """Run audio fallback transcription using Whisper.
-    
+
     Args:
         video_id: The YouTube video ID
         video_path: Path to the downloaded video file
         language: Language code for transcription (e.g., "id", "en")
-    
+
     Returns:
         Path to the word_timestamps.json file
-    
+
     Raises:
         RuntimeError: If transcription fails
     """
     transcript_dir = TRANSCRIPT_DIR / video_id
     transcript_dir.mkdir(parents=True, exist_ok=True)
-    
+
     audio_path = transcript_dir / "audio.wav"
     word_timestamps_path = transcript_dir / "word_timestamps.json"
-    
-# Build command to run caption_generator.py
+
+    # Build command to run caption_generator.py
     # Use FALLBACK_PYTHON_BIN which has whisper installed (transcript venv)
     cmd = [
         FALLBACK_PYTHON_BIN,
@@ -391,167 +400,68 @@ def run_audio_fallback_transcription(
         "--audio-preset", "speech",
         "--save-raw-result",
     ]
-    
+
     # First language from request.languages (e.g., "id" from "id,en")
     if "," in language:
         first_lang = language.split(",")[0].strip()
         if first_lang:
             cmd[cmd.index("-l") + 1] = first_lang
-    
+
+    video_size_mb = video_path.stat().st_size / (1024 * 1024)
+    _log_fallback(f"Starting Whisper transcription for {video_id}")
+    _log_fallback(f"  Video: {video_path.name} ({video_size_mb:.1f} MB)")
+    _log_fallback(f"  Language: {language}, Model: medium, Preset: accurate")
+    _log_fallback(f"  Command: {' '.join(cmd)}")
+
+    t0 = time.monotonic()
+
     try:
-        result = subprocess.run(
+        # Use Popen to stream output in real-time
+        process = subprocess.Popen(
             cmd,
             cwd=str(APP_DIR),
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            timeout=1800  # 30 minute timeout
+            bufsize=1,  # Line-buffered
         )
-        
-        if result.returncode != 0:
-            combined = combine_process_output(result.stdout, result.stderr)
+
+        output_lines = []
+        for line in process.stdout:
+            line = line.rstrip("\n")
+            output_lines.append(line)
+            # Forward all caption_generator output to server logs
+            print(f"  [whisper] {line}", flush=True)
+
+        process.wait(timeout=1800)  # 30 minute timeout for wait
+        elapsed = time.monotonic() - t0
+        combined_output = "\n".join(output_lines)
+
+        if process.returncode != 0:
+            _log_fallback(f"Whisper process FAILED (exit={process.returncode}) after {elapsed:.1f}s")
             raise RuntimeError(
-                f"Audio fallback transcription failed: {combined[:2000]}"
+                f"Audio fallback transcription failed (exit={process.returncode}, {elapsed:.1f}s): {combined_output[-2000:]}"
             )
-        
+
         if not word_timestamps_path.exists():
+            _log_fallback(f"Whisper process exited OK but word_timestamps.json NOT found after {elapsed:.1f}s")
             raise RuntimeError(
                 f"Audio fallback completed but word_timestamps.json not found at {word_timestamps_path}"
             )
-        
+
+        wt_size = word_timestamps_path.stat().st_size / 1024
+        _log_fallback(f"Whisper transcription SUCCESS in {elapsed:.1f}s, output {wt_size:.1f} KB")
         return word_timestamps_path
-        
-    except subprocess.TimeoutExpired as exc:
-        combined = combine_process_output(exc.stdout, exc.stderr)
-        raise RuntimeError(f"Audio fallback transcription timed out: {combined[-1000:]}")
+
+    except subprocess.TimeoutExpired:
+        elapsed = time.monotonic() - t0
+        _log_fallback(f"Whisper process TIMED OUT after {elapsed:.1f}s")
+        process.kill()
+        process.wait()
+        raise RuntimeError(f"Audio fallback transcription timed out after {elapsed:.1f}s")
 
 
-def convert_word_timestamps_to_transcript_files(
-    video_id: str,
-    language: str = "id",
-) -> dict:
-    """Convert word_timestamps.json to all transcript file formats.
-    
-    Args:
-        video_id: The YouTube video ID
-        language: Language code for the transcript
-    
-    Returns:
-        Dict with paths to created files
-    """
-    import re
-    
-    transcript_dir = TRANSCRIPT_DIR / video_id
-    word_timestamps_path = transcript_dir / "word_timestamps.json"
-    
-    if not word_timestamps_path.exists():
-        raise FileNotFoundError(f"word_timestamps.json not found: {word_timestamps_path}")
-    
-    # Load word timestamps
-    word_timestamps = json.loads(word_timestamps_path.read_text())
-    if not isinstance(word_timestamps, list):
-        raise ValueError(f"word_timestamps.json must contain a list, got {type(word_timestamps)}")
-    
-    # Group words into segments of ~12 words each
-    segments = []
-    words_per_segment = 12
-    
-    for i in range(0, len(word_timestamps), words_per_segment):
-        segment_words = word_timestamps[i:i + words_per_segment]
-        if not segment_words:
-            continue
-        
-        text = " ".join(w.get("word", "") for w in segment_words)
-        start = segment_words[0].get("start", 0.0)
-        end = segment_words[-1].get("end", 0.0)
-        
-        segments.append({
-            "start": start,
-            "end": end,
-            "duration": end - start,
-            "text": text,
-        })
-    
-    # Write transcript.clean.json
-    clean_path = transcript_dir / "transcript.clean.json"
-    clean_path.write_text(json.dumps(segments, ensure_ascii=False, indent=2))
-    
-    # Write transcript.raw.json (same as clean for now)
-    raw_path = transcript_dir / "transcript.raw.json"
-    raw_path.write_text(json.dumps(segments, ensure_ascii=False, indent=2))
-    
-    # Write transcript.txt
-    txt_path = transcript_dir / "transcript.txt"
-    txt_content = "\n".join(s.get("text", "") for s in segments if s.get("text"))
-    txt_path.write_text(txt_content, encoding="utf-8")
-    
-    # Write transcript.paragraphs.txt
-    para_path = transcript_dir / "transcript.paragraphs.txt"
-    para_content = "\n\n".join(s.get("text", "") for s in segments if s.get("text"))
-    para_path.write_text(para_content, encoding="utf-8")
-    
-    # Write transcript.srt
-    def format_srt_timestamp(seconds: float) -> str:
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        millis = int((seconds % 1) * 1000)
-        return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
-    
-    srt_path = transcript_dir / "transcript.srt"
-    srt_lines = []
-    for idx, seg in enumerate(segments, 1):
-        start_ts = format_srt_timestamp(seg.get("start", 0.0))
-        end_ts = format_srt_timestamp(seg.get("end", 0.0))
-        text = seg.get("text", "")
-        srt_lines.append(f"{idx}\n{start_ts} --> {end_ts}\n{text}\n")
-    srt_path.write_text("\n".join(srt_lines), encoding="utf-8")
-    
-    # Write transcript.vtt
-    vtt_path = transcript_dir / "transcript.vtt"
-    def format_vtt_timestamp(seconds: float) -> str:
-        minutes = int(seconds // 60)
-        secs = seconds % 60
-        millis = int((secs % 1) * 1000)
-        return f"{minutes:02d}:{secs:06.3f}"
-    
-    vtt_lines = ["WEBVTT", ""]
-    for seg in segments:
-        start_ts = format_vtt_timestamp(seg.get("start", 0.0))
-        end_ts = format_vtt_timestamp(seg.get("end", 0.0))
-        text = seg.get("text", "")
-        vtt_lines.append(f"{start_ts} --> {end_ts}")
-        vtt_lines.append(text)
-        vtt_lines.append("")
-    vtt_path.write_text("\n".join(vtt_lines), encoding="utf-8")
-    
-    # Write metadata.json
-    # First language from request
-    first_language = language.split(",")[0].strip() if "," in language else language.strip()
-    
-    metadata = {
-        "source_method": "audio-whisper-fallback",
-        "video_id": video_id,
-        "requested_languages": language.split(","),
-        "selected_transcript": {
-            "video_id": video_id,
-            "language_code": first_language,
-            "is_generated": True,
-            "is_translatable": False,
-            "translated_to": None,
-        }
-    }
-    metadata_path = transcript_dir / "metadata.json"
-    metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
-    
-    return {
-        "clean": clean_path,
-        "raw": raw_path,
-        "txt": txt_path,
-        "paragraphs": para_path,
-        "srt": srt_path,
-        "vtt": vtt_path,
-        "metadata": metadata_path,
-    }
+
 
 
 def step_output_exists(step: str, video_id: str) -> bool:
@@ -560,7 +470,7 @@ def step_output_exists(step: str, video_id: str) -> bool:
     Returns True only if expected output for the step exists and is valid.
     """
     run_dir = OUTPUT_DIR / video_id
-    
+
     if step == "download":
         # yt-dlp output includes title/date before the video id, for example:
         # 2024-04-17_Title_lo6KE0Kcvoc.mp4
@@ -580,7 +490,7 @@ def step_output_exists(step: str, video_id: str) -> bool:
                 if files:
                     return True
         return False
-    
+
     elif step == "transcript":
         # Check for specific required transcript files
         transcript_dir = TRANSCRIPT_DIR / video_id
@@ -590,7 +500,7 @@ def step_output_exists(step: str, video_id: str) -> bool:
             transcript_dir / "transcript.vtt",
         ]
         return all(path.exists() and path.stat().st_size > 0 for path in required_files)
-    
+
     elif step == "analyze":
         # Check for moments.md or result.json in run dir
         if run_dir.exists():
@@ -599,7 +509,7 @@ def step_output_exists(step: str, video_id: str) -> bool:
             if (run_dir / "result.json").exists():
                 return True
         return False
-    
+
     elif step == "render":
         # Check shorts/*.mp4 with valid duration
         shorts_dir = run_dir / "shorts"
@@ -611,11 +521,11 @@ def step_output_exists(step: str, video_id: str) -> bool:
                 if is_valid and has_audio:
                     return True
         return False
-    
+
     elif step == "opening":
         is_valid, _ = validate_opening_result(run_dir)
         return is_valid
-    
+
     elif step == "watermark":
         # Check watermarked/*_wm.mp4 with valid duration
         watermarked_dir = run_dir / "watermarked"
@@ -626,7 +536,7 @@ def step_output_exists(step: str, video_id: str) -> bool:
                 if is_valid:
                     return True
         return False
-    
+
 # Unknown step - fall back to generic check
     return check_output_exists(video_id)
 
@@ -638,13 +548,13 @@ def read_watermark_plan_error(video_id: str) -> Optional[str]:
     """
     run_dir = OUTPUT_DIR / video_id
     plan_file = run_dir / "watermark_plan.json"
-    
+
     if not plan_file.exists():
         return None
-    
+
     try:
         plan_data = json.loads(plan_file.read_text())
-        
+
 # Check for error in clips/items
         clips = plan_data.get("clips", []) if isinstance(plan_data, dict) else []
         for clip in clips:
@@ -667,14 +577,14 @@ def load_transcribe_text(video_id: str) -> Optional[str]:
 
     Reads transcript.txt first. If missing or empty, falls back to
     transcript.clean.json and joins segment texts.
-    
+
     Returns transcript text or None if not available.
     """
     if not video_id:
         return None
-    
+
     transcript_dir = TRANSCRIPT_DIR / video_id
-    
+
     # Step 1: Try transcript.txt
     txt_file = transcript_dir / "transcript.txt"
     if txt_file.exists():
@@ -684,7 +594,7 @@ def load_transcribe_text(video_id: str) -> Optional[str]:
                 return text
         except Exception:
             pass
-    
+
     # Step 2: Fall back to transcript.clean.json
     json_file = transcript_dir / "transcript.clean.json"
     if json_file.exists():
@@ -700,53 +610,53 @@ def load_transcribe_text(video_id: str) -> Optional[str]:
                     return " ".join(texts).strip()
         except Exception:
             pass
-    
+
     return None
 
 
 def load_transcribe_timeline(video_id: str) -> Optional[dict]:
     """
     Load transcript timeline (segments with timing) for a video.
-    
+
     Reads transcript.clean.json and builds a clean segments list.
     Returns dict with duration, segment_count, and segments.
-    
+
     Returns None if not available or invalid.
     """
     if not video_id:
         return None
-    
+
     transcript_dir = TRANSCRIPT_DIR / video_id
     json_file = transcript_dir / "transcript.clean.json"
-    
+
     if not json_file.exists():
         return None
-    
+
     try:
         data = json.loads(json_file.read_text())
     except Exception:
         return None
-    
+
     if not isinstance(data, list):
         return None
-    
+
     # Build clean segments list
     segments = []
     max_end = 0.0
-    
+
     for segment in data:
         if not isinstance(segment, dict):
             continue
-        
+
         text = segment.get("text")
         if not text or not isinstance(text, str) or not text.strip():
             continue
-        
+
         # Parse timing values
         start_val = segment.get("start")
         end_val = segment.get("end")
         duration_val = segment.get("duration")
-        
+
         # Convert start to float if possible
         start = None
         if start_val is not None:
@@ -754,7 +664,7 @@ def load_transcribe_timeline(video_id: str) -> Optional[dict]:
                 start = float(start_val)
             except (ValueError, TypeError):
                 continue
-        
+
         # Convert end to float if possible
         end = None
         if end_val is not None:
@@ -762,7 +672,7 @@ def load_transcribe_timeline(video_id: str) -> Optional[dict]:
                 end = float(end_val)
             except (ValueError, TypeError):
                 pass
-        
+
         # Convert duration to float if possible
         duration = None
         if duration_val is not None:
@@ -770,33 +680,33 @@ def load_transcribe_timeline(video_id: str) -> Optional[dict]:
                 duration = float(duration_val)
             except (ValueError, TypeError):
                 pass
-        
+
         # Compute missing values
         if end is None and start is not None and duration is not None:
             end = start + duration
         elif duration is None and start is not None and end is not None:
             duration = end - start
-        
+
         # Need at least start to be valid
         if start is None:
             continue
-        
+
         segment_clean = {
             "start": start,
             "end": end if end is not None else start,
             "duration": duration if duration is not None else 0.0,
             "text": text.strip(),
         }
-        
+
         # Track max end
         if end is not None and end > max_end:
             max_end = end
-        
+
         segments.append(segment_clean)
-    
+
     if not segments:
         return None
-    
+
     return {
         "duration": max_end,
         "segment_count": len(segments),
@@ -812,14 +722,14 @@ def validate_step_input(step: str, video_id: str) -> tuple[bool, Optional[str]]:
     run_dir = OUTPUT_DIR / video_id
 
     if step == "opening":
-        # Need valid shorts from render
-        shorts_dir = run_dir / "shorts"
-        if not shorts_dir.exists():
-            return (False, f"shorts directory does not exist: {shorts_dir}")
+        # Need valid non-Telegram watermarked video from watermark step.
+        watermarked_dir = run_dir / "watermarked"
+        if not watermarked_dir.exists():
+            return (False, f"watermarked directory does not exist: {watermarked_dir}")
 
-        mp4_files = list(shorts_dir.glob("*.mp4"))
+        mp4_files = find_opening_watermarked_inputs(run_dir)
         if not mp4_files:
-            return (False, f"No MP4 files found in {shorts_dir}")
+            return (False, f"No non-Telegram *_wm.mp4 files found in {watermarked_dir}")
 
         # Check file size stability (wait 2 seconds)
         first_short = mp4_files[0]
@@ -878,19 +788,19 @@ def check_output_exists(video_id: str) -> bool:
     run_dir = OUTPUT_DIR / video_id
     shorts_dir = run_dir / "shorts"
     watermarked_dir = run_dir / "watermarked"
-    
+
     # Check shorts dir
     if shorts_dir.exists():
         mp4_files = list(shorts_dir.glob("*.mp4"))
         if mp4_files:
             return True
-    
+
     # Check watermarked dir
     if watermarked_dir.exists():
         mp4_files = list(watermarked_dir.glob("*.mp4"))
         if mp4_files:
             return True
-    
+
     return False
 
 
@@ -914,18 +824,18 @@ def determine_job_status(
     """
     Determine job status based on returncode and actual output.
     Returns tuple of (status, error_message, error_code).
-    
-    If output files exist or loading_state shows completed, 
+
+    If output files exist or loading_state shows completed,
     treat as completed even if returncode != 0.
     """
     # Check if output actually exists (more reliable than returncode)
     output_exists = check_output_exists(video_id)
     loading_state = load_loading_state(video_id)
     pipeline_completed = (
-        output_exists or 
+        output_exists or
         (loading_state and loading_state.get("state") == "completed")
     )
-    
+
     if returncode == 0:
         return ("completed", None, None)
     elif pipeline_completed:
@@ -944,19 +854,19 @@ def reconcile_job_status(job_id: str, job: dict) -> dict:
     """
     Reconcile job status with disk metadata, output files, and loading_state.json.
     Returns the updated job dict.
-    
-    This ensures that even if in-memory job status is stale (e.g., 'failed'), 
+
+    This ensures that even if in-memory job status is stale (e.g., 'failed'),
     the API will return the real current status based on actual output files.
     """
     # 1. Load disk metadata
     disk_job = load_job_metadata(job_id)
-    
+
     # 2. Merge: start from job, overlay fields from disk_job
     if disk_job:
         merged = {**job, **disk_job}
     else:
         merged = dict(job)
-    
+
     # 3. Get video_id
     video_id = merged.get("video_id")
     if not video_id:
@@ -964,16 +874,16 @@ def reconcile_job_status(job_id: str, job: dict) -> dict:
         save_job_metadata(job_id, merged)
         jobs[job_id] = merged
         return merged
-    
+
     # 4. Determine output check method based on job type
     # If job has step field, use step-specific validation
     job_step = merged.get("step")
-    
+
     if job_step:
         # Step-specific jobs must not be marked completed by polling while
         # their subprocess is still active. This is critical for opening:
-        # opening overwrites shorts/short_*.mp4, so a pre-existing render file
-        # would otherwise make the opening job look completed immediately.
+        # opening overwrites watermarked/short_*_wm.mp4, so a pre-existing
+        # watermark file would otherwise make the opening job look completed.
         if merged.get("status") in {"queued", "running"}:
             output_exists = False
         else:
@@ -986,7 +896,7 @@ def reconcile_job_status(job_id: str, job: dict) -> dict:
         output_exists = check_output_exists(video_id)
         loading_state = load_loading_state(video_id)
         loading_completed = loading_state and loading_state.get("state") == "completed"
-    
+
 # 5. If output exists OR (for full pipeline only) loading completed, set status to completed
     if output_exists or loading_completed:
         merged["status"] = "completed"
@@ -1007,7 +917,7 @@ def reconcile_job_status(job_id: str, job: dict) -> dict:
         plan_error = None
         if job_step == "watermark":
             plan_error = read_watermark_plan_error(video_id)
-        
+
         if plan_error:
             merged["status"] = "failed"
             merged["error_code"] = "watermark_failed"
@@ -1019,7 +929,7 @@ def reconcile_job_status(job_id: str, job: dict) -> dict:
             error_messages = {
                 "watermark": "Watermark step completed but no watermarked video was created",
                 "render": "Render step completed but no short video was created",
-                "opening": "Opening step completed but no valid short video was found",
+                "opening": "Opening step completed but no valid non-Telegram watermarked video was found",
             }
             merged["error"] = error_messages.get(job_step, f"{job_step} step completed but no output was found")
 
@@ -1079,7 +989,7 @@ def run_background_job(job_id: str, video_id: str, request_data: dict):
     try:
         # Build command arguments
         cmd = ["./run.sh", "-o", str(OUTPUT_DIR)]
-        
+
         if request_data.get("num_clips"):
             cmd.extend(["-n", str(request_data["num_clips"])])
         if request_data.get("quality"):
@@ -1099,9 +1009,9 @@ def run_background_job(job_id: str, video_id: str, request_data: dict):
                 cmd.extend(["--watermark-position", str(request_data["watermark_position"])])
         else:
             cmd.append("--no-watermark")
-        
+
         cmd.append(request_data["source"])
-        
+
 # Update job status
         jobs[job_id].update({
             "status": "running",
@@ -1110,7 +1020,7 @@ def run_background_job(job_id: str, video_id: str, request_data: dict):
             "started_at": datetime.now(timezone.utc).isoformat()
         })
         save_job_metadata(job_id, jobs[job_id])
-        
+
 # Run the command
         result = subprocess.run(
             cmd,
@@ -1152,11 +1062,11 @@ def run_background_job(job_id: str, video_id: str, request_data: dict):
         log_paths = save_job_process_logs(job_id, exc.stdout, exc.stderr)
         if log_paths:
             jobs[job_id].update(log_paths)
-        
+
         # Use tail of combined output if available, otherwise generic message
         combined = combine_process_output(exc.stdout, exc.stderr)
         error_msg = combined[-4000:] if combined else "Command timed out"
-        
+
         jobs[job_id].update({
             "status": "failed",
             "error": error_msg,
@@ -1168,21 +1078,21 @@ def run_background_job(job_id: str, video_id: str, request_data: dict):
             "error": str(e)[:500],
             "completed_at": datetime.now(timezone.utc).isoformat()
         })
-    
+
     # Persist final status
     save_job_metadata(job_id, jobs[job_id])
 
 
 def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_data: dict, cmd: list[str]):
     """Run transcript job with audio fallback on failure.
-    
+
     This function runs the initial transcript command (./transcribe_youtube.sh).
     If it fails, it falls back to audio transcription using Whisper
     if a downloaded video file can be found.
     """
     job_step = "transcript"
     request_languages = request_data.get("languages", "id,en")
-    
+
     try:
         # Update job status to running
         jobs[job_id].update({
@@ -1220,27 +1130,34 @@ def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_d
         # Command failed or no output - try audio fallback
         combined = combine_process_output(result.stdout, result.stderr)
         fallback_error = None
-        
+
+        _log_fallback(f"YouTube transcript command failed for {video_id} (exit={result.returncode})")
+        _log_fallback(f"  Reason: {combined[:300]}")
+
         # Try to find downloaded video for fallback
         video_path = find_downloaded_video(video_id)
         if video_path:
             try:
                 # Run audio fallback transcription
+                _log_fallback(f"Found video file: {video_path.name}, starting Whisper fallback")
                 print(f"Transcript command failed, trying audio fallback with {video_path}")
                 word_timestamps_path = run_audio_fallback_transcription(
                     video_id=video_id,
                     video_path=video_path,
                     language=request_languages,
                 )
-                
+
                 # Convert word timestamps to transcript files
+                _log_fallback("Converting word timestamps to transcript files ...")
                 convert_word_timestamps_to_transcript_files(
                     video_id=video_id,
                     language=request_languages,
                 )
-                
+                _log_fallback("Conversion complete")
+
                 # Verify output now exists
                 if step_output_exists(job_step, video_id):
+                    _log_fallback(f"Transcript output verified for {video_id} — marking job completed")
                     jobs[job_id].update({
                         "status": "completed",
                         "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -1251,15 +1168,20 @@ def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_d
                     return  # Fallback success - job is completed
                 else:
                     fallback_error = "Audio fallback completed but transcript output not found"
-                    
+                    _log_fallback(f"WARN: {fallback_error}")
+
             except Exception as e:
                 fallback_error = str(e)[:1000]
-        
+                _log_fallback(f"Whisper fallback FAILED: {fallback_error}")
+        else:
+            _log_fallback(f"No downloaded video found for {video_id} — cannot run audio fallback")
+
         # Both failed - mark as failed
         error_msg = f"Transcript failed. YouTube transcript: {combined[:500]}"
         if fallback_error:
             error_msg += f" | Audio fallback: {fallback_error}"
-        
+
+        _log_fallback(f"All transcript methods FAILED for {video_id}")
         jobs[job_id].update({
             "status": "failed",
             "error": error_msg,
@@ -1276,21 +1198,27 @@ def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_d
         combined = combine_process_output(exc.stdout, exc.stderr)
         error_msg = f"Transcript command timed out: {combined[-1000:]}"
 
+        _log_fallback(f"YouTube transcript command TIMED OUT for {video_id}")
+
         # Try audio fallback even after timeout
         video_path = find_downloaded_video(video_id)
         if video_path:
             try:
+                _log_fallback(f"Attempting Whisper fallback after timeout with {video_path.name}")
                 word_timestamps_path = run_audio_fallback_transcription(
                     video_id=video_id,
                     video_path=video_path,
                     language=request_languages,
                 )
+                _log_fallback("Converting word timestamps to transcript files ...")
                 convert_word_timestamps_to_transcript_files(
                     video_id=video_id,
                     language=request_languages,
                 )
-                
+                _log_fallback("Conversion complete")
+
                 if step_output_exists(job_step, video_id):
+                    _log_fallback(f"Transcript output verified for {video_id} after timeout fallback — completed")
                     jobs[job_id].update({
                         "status": "completed",
                         "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -1298,10 +1226,14 @@ def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_d
                     })
                     save_job_metadata(job_id, jobs[job_id])
                     return
-                    
-            except Exception as fallback_e:
-                error_msg += f" | Fallback also failed: {str(fallback_e)[:500]}"
 
+            except Exception as fallback_e:
+                _log_fallback(f"Whisper fallback after timeout FAILED: {str(fallback_e)[:500]}")
+                error_msg += f" | Fallback also failed: {str(fallback_e)[:500]}"
+        else:
+            _log_fallback(f"No downloaded video found for {video_id} — cannot run audio fallback after timeout")
+
+        _log_fallback(f"All transcript methods FAILED for {video_id} (timeout path)")
         jobs[job_id].update({
             "status": "failed",
             "error": error_msg,
@@ -1310,6 +1242,7 @@ def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_d
         save_job_metadata(job_id, jobs[job_id])
 
     except Exception as e:
+        _log_fallback(f"Unexpected error in transcript job for {video_id}: {str(e)[:300]}")
         jobs[job_id].update({
             "status": "failed",
             "error": str(e)[:500],
@@ -1322,11 +1255,11 @@ def run_command_job(job_id: str, video_id: str, cmd: list[str]):
     """Run a single pipeline step command in background."""
     # Get step from job if already created
     job_step = jobs[job_id].get("step") if job_id in jobs else None
-    
+
     # Part 4: Check if this is a render job with payload
     request_data = jobs[job_id].get("request", {}) if job_id in jobs else {}
     render_payload = request_data.get("render_payload")
-    
+
     try:
         jobs[job_id].update({
             "status": "running",
@@ -1340,6 +1273,8 @@ def run_command_job(job_id: str, video_id: str, cmd: list[str]):
             stale_result = OUTPUT_DIR / video_id / "result.json"
             if stale_result.exists():
                 stale_result.unlink()
+            # Rebuild result.json before opening runs so narrator can access render_payload
+            ensure_result_json_for_render_payload(video_id, request_data)
 
         result = subprocess.run(
             cmd,
@@ -1550,7 +1485,7 @@ def json_file_mentions_video_id(path: Path, video_id: str) -> bool:
 def save_render_payload_file(video_id: str, payload: dict) -> Optional[Path]:
     """
     Save render_payload.json to disk.
-    
+
     Returns the Path of the written file, or None if video_id or payload is empty.
     Raises exceptions on write failure (propagates to caller).
     """
@@ -1558,7 +1493,7 @@ def save_render_payload_file(video_id: str, payload: dict) -> Optional[Path]:
         return None
     if not payload:
         return None
-    
+
     run_dir = OUTPUT_DIR / video_id
     run_dir.mkdir(parents=True, exist_ok=True)
     payload_file = run_dir / "render_payload.json"
@@ -1566,55 +1501,127 @@ def save_render_payload_file(video_id: str, payload: dict) -> Optional[Path]:
     return payload_file
 
 
+def ensure_result_json_for_render_payload(video_id: str, request_data: dict) -> bool:
+    """
+    Ensure result.json exists with highlight data from render_payload before opening step runs.
+
+    The opening narrator script (_read_highlights) expects result.json with a 'highlights'
+    array containing clip timing info (start, end). This function rebuilds result.json
+    from render_payload if available.
+
+    Args:
+        video_id: The YouTube video ID
+        request_data: The job's request data containing render_payload
+
+    Returns:
+        True if result.json was created/updated, False if nothing was done
+    """
+    run_dir = OUTPUT_DIR / video_id
+    result_json_path = run_dir / "result.json"
+
+    # Get render_payload from request_data
+    render_payload = request_data.get("render_payload") if request_data else None
+    if not render_payload:
+        return False
+
+    # Extract timing info from render_payload
+    try:
+        start = float(render_payload.get("start", 0))
+        end = float(render_payload.get("end", 0))
+    except (TypeError, ValueError):
+        return False
+
+    if end <= start:
+        return False
+
+    # Build highlight entry from render_payload
+    highlight = {
+        "start": start,
+        "end": end,
+        "duration": round(end - start, 3),
+    }
+
+    # Preserve optional fields from render_payload
+    for field in ["clip_index", "viral_score", "clip_type", "structure", "why_this_clip_works"]:
+        if field in render_payload:
+            highlight[field] = render_payload[field]
+
+    # Build result.json structure
+    result_data = {
+        "highlights": [highlight],
+        "shorts": [highlight],  # Also include in shorts for compatibility
+    }
+
+    # If result.json already exists, try to preserve existing highlights and merge
+    if result_json_path.exists():
+        try:
+            existing_data = json.loads(result_json_path.read_text())
+            # Preserve existing highlights if they exist and are valid
+            existing_highlights = existing_data.get("highlights", [])
+            if isinstance(existing_highlights, list) and existing_highlights:
+                result_data["highlights"] = existing_highlights
+            # Preserve shorts if they exist
+            existing_shorts = existing_data.get("shorts", [])
+            if isinstance(existing_shorts, list) and existing_shorts:
+                result_data["shorts"] = existing_shorts
+        except Exception:
+            pass  # Use our built data
+
+    # Write result.json
+    run_dir.mkdir(parents=True, exist_ok=True)
+    result_json_path.write_text(json.dumps(result_data, ensure_ascii=False, indent=2))
+    return True
+
+
 def normalize_render_payload(payload: Optional[dict]) -> Optional[dict]:
     """
     Normalize and validate render_payload.
-    
+
     Returns None if payload is None.
     Otherwise validates and returns normalized dict with:
     - start: float
     - end: float
     - duration: computed as end - start
     - Preserved optional fields
-    
+
     Raises ValueError if validation fails.
     """
     if payload is None:
         return None
-    
+
     # Require start
     if "start" not in payload:
         raise ValueError("render_payload requires 'start' field")
-    
+
     # Require end
     if "end" not in payload:
         raise ValueError("render_payload requires 'end' field")
-    
+
     # Convert to float
     try:
         start = float(payload["start"])
     except (ValueError, TypeError) as e:
         raise ValueError(f"render_payload 'start' must be numeric: {e}")
-    
+
     try:
         end = float(payload["end"])
     except (ValueError, TypeError) as e:
         raise ValueError(f"render_payload 'end' must be numeric: {e}")
-    
+
     # Reject if end <= start
     if end <= start:
         raise ValueError(f"render_payload 'end' must be greater than 'start': {end} <= {start}")
-    
+
     # Compute canonical duration
     duration = round(end - start, 3)
-    
+
     # Build normalized result with required fields
     normalized = {
         "start": start,
         "end": end,
         "duration": duration,
     }
-    
+
     # Preserve optional fields
     optional_fields = [
         "clip_index",
@@ -1629,11 +1636,11 @@ def normalize_render_payload(payload: Optional[dict]) -> Optional[dict]:
         "editing_recommendation",
         "best_cut_note",
     ]
-    
+
     for field in optional_fields:
         if field in payload:
             normalized[field] = payload[field]
-    
+
     return normalized
 
 
@@ -1663,10 +1670,10 @@ async def create_generate_job(
         video_id = extract_video_id(request.source)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     # Generate job ID
     job_id = str(uuid.uuid4())
-    
+
     # Create job record
     jobs[job_id] = {
         "job_id": job_id,
@@ -1675,10 +1682,10 @@ async def create_generate_job(
         "request": request.model_dump(),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    
+
     # Save to disk
     save_job_metadata(job_id, jobs[job_id])
-    
+
     # Run in background
     background_tasks.add_task(
         run_background_job,
@@ -1686,7 +1693,7 @@ async def create_generate_job(
         video_id,
         request.model_dump()
     )
-    
+
     return {
         "job_id": job_id,
         "status_url": f"/jobs/{job_id}",
@@ -1701,7 +1708,7 @@ async def create_transcript_job(
     token: str = Depends(verify_token)
 ):
     """Extract or refresh YouTube transcript only.
-    
+
     This endpoint tries YouTube transcript first. If it fails,
     it falls back to audio transcription using Whisper.
     """
@@ -1716,7 +1723,7 @@ async def create_transcript_job(
         "-l", str(request.languages),
         request.source,
     ]
-    
+
     # Use the new function with audio fallback for transcript jobs
     job_id = str(uuid.uuid4())
     jobs[job_id] = {
@@ -1964,7 +1971,7 @@ async def create_opening_job(
     background_tasks: BackgroundTasks,
     token: str = Depends(verify_token)
 ):
-    """Prepend opening narration to already rendered shorts."""
+    """Prepend opening narration to non-Telegram watermarked videos."""
     try:
         video_id = extract_video_id(request.source)
     except ValueError as e:
@@ -1979,7 +1986,18 @@ async def create_opening_job(
     if not is_ready:
         raise HTTPException(
             status_code=400,
-            detail=f"Input short is not ready or invalid: {error_msg}"
+            detail=f"Input watermarked video is not ready or invalid: {error_msg}"
+        )
+
+    # 1. Resolve static thumbnail asset
+    thumbnail_path = find_static_opening_thumbnail(video_id)
+    if not thumbnail_path:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Opening thumbnail asset not found. "
+                f"Expected assets/thumbnail/{video_id}.png|jpg|jpeg|webp"
+            ),
         )
 
     run_dir = OUTPUT_DIR / video_id
@@ -1991,23 +2009,13 @@ async def create_opening_job(
         "--voice", str(request.opening_voice or "id-ID-GadisNeural"),
         "--rate", str(request.opening_rate or "+10%"),
         "--pitch", str(request.opening_pitch or "+0Hz"),
+        "--image", str(thumbnail_path), # 2. ALWAYS send the found static thumbnail
     ]
 
-    if request.opening_image:
-        cmd.extend(["--image", str(request.opening_image)])
-    if request.opening_thumbnail_title:
-        cmd.extend(["--thumbnail-title", str(request.opening_thumbnail_title)])
-    if request.opening_thumbnail_talents:
-        for talent in str(request.opening_thumbnail_talents).split(","):
-            talent = talent.strip()
-            if talent:
-                cmd.extend(["--thumbnail-talent", talent])
-    if request.opening_thumbnail_font:
-        cmd.extend(["--thumbnail-font", str(request.opening_thumbnail_font)])
-    if request.opening_upload_title:
-        cmd.extend(["--upload-title", str(request.opening_upload_title)])
-    if request.opening_source_title:
-        cmd.extend(["--source-title", str(request.opening_source_title)])
+    # Legacy payload fields are ignored for thumbnail generation:
+    # opening_thumbnail_title, opening_thumbnail_talents, opening_thumbnail_font
+    # opening_upload_title, opening_source_title
+
     if request.opening_bgm:
         cmd.extend(["--bgm", str(request.opening_bgm)])
     if request.opening_bgm_volume is not None:
@@ -2089,11 +2097,11 @@ async def get_job_status(
             raise HTTPException(status_code=404, detail="Job not found")
         jobs[job_id] = metadata
         job = metadata
-    
+
 # Reconcile job status with actual output files
     job = reconcile_job_status(job_id, job)
     video_id = job.get("video_id")
-    
+
     response = {
         "job_id": job["job_id"],
         "status": job["status"],
@@ -2103,7 +2111,7 @@ async def get_job_status(
     # Include error if job failed
     if job["status"] == "failed":
         response["error"] = job.get("error", "Unknown error")
- 
+
     # Add transcribe field for transcript jobs
     if job.get("step") == "transcript":
         response["transcribe"] = load_transcribe_text(video_id) if video_id else None
@@ -2130,7 +2138,7 @@ async def get_job_status(
                 response["loading_state"] = loading_state
             except Exception:
                 pass
-    
+
     return response
 
 
@@ -2150,40 +2158,41 @@ async def get_job_result(
             raise HTTPException(status_code=404, detail="Job not found")
         jobs[job_id] = metadata
         job = metadata
-    
+
     # Reconcile job status with actual output files
     job = reconcile_job_status(job_id, job)
-    
+
     video_id = job.get("video_id")
-    
+
     if not video_id:
         raise HTTPException(status_code=404, detail="Video ID not found")
-    
+
     run_dir = OUTPUT_DIR / video_id
     result_file = run_dir / "result.json"
-    
+
     if not result_file.exists():
         return {
             "job_id": job_id,
             "status": job.get("status", "unknown"),
             "message": "Result not ready"
         }
-    
+
     # Load result
     result = json.loads(result_file.read_text())
-    
+
     # Build base URL for download links
     base_url = CONTENT_SHORT_BASE_URL.rstrip("/")
-    
+
 # Find output files
     output_files = []
     job_step = job.get("step")
 
-    # For watermark step, only include watermarked files, not shorts
     # Check watermarked dir
     watermarked_dir = run_dir / "watermarked"
     if watermarked_dir.exists():
         for f in sorted(watermarked_dir.glob("*.mp4")):
+            if job_step == "opening" and not is_opening_watermarked_input(f):
+                continue
             output_files.append({
                 "filename": f.name,
                 "path": str(f.relative_to(STORAGE_DIR)),
@@ -2192,8 +2201,8 @@ async def get_job_result(
                 "size": f.stat().st_size
             })
 
-    # Check shorts dir (but NOT for watermark step)
-    if job_step != "watermark":
+    # Check shorts dir, but not for steps whose final artifact lives in watermarked/.
+    if job_step not in ("watermark", "opening"):
         shorts_dir = run_dir / "shorts"
         if shorts_dir.exists():
             for f in sorted(shorts_dir.glob("*.mp4")):
@@ -2205,7 +2214,7 @@ async def get_job_result(
                         "download_url": f"{base_url}/jobs/{job_id}/files/{f.name}",
                         "size": f.stat().st_size
                     })
-    
+
 # Get actual job status (not hardcoded)
     job_status = job.get("status", "unknown")
 
@@ -2224,17 +2233,25 @@ async def get_job_result(
 
     # Include artifact status debug info
     if job_step:
-        # Count different artifact types
-        watermarked_count = len([f for f in output_files if "wm.mp4" in f["filename"]])
-        shorts_count = len([f for f in output_files if "wm.mp4" not in f["filename"]])
+        # Count different artifact types. Telegram delivery files are secondary artifacts.
+        watermarked_count = len([
+            f for f in output_files
+            if f["filename"].endswith("_wm.mp4") and "_telegram" not in f["filename"]
+        ])
+        telegram_count = len([f for f in output_files if "_telegram" in f["filename"]])
+        shorts_count = len([
+            f for f in output_files
+            if not f["filename"].endswith("_wm.mp4") and "_telegram" not in f["filename"]
+        ])
 
         response["artifact_status"] = {
             "step": job_step,
             "shorts_count": shorts_count,
             "watermarked_count": watermarked_count,
+            "telegram_count": telegram_count,
             "missing_expected_artifact": (
-                (job_step == "watermark" and watermarked_count == 0) or
-                (job_step in ("render", "opening") and shorts_count == 0)
+                (job_step in ("watermark", "opening") and watermarked_count == 0) or
+                (job_step == "render" and shorts_count == 0)
             )
         }
 
@@ -2243,7 +2260,7 @@ async def get_job_result(
         response["error"] = job.get("error", "Unknown error")
         response["error_code"] = job.get("error_code", "RENDER_FAILED")
         response["error_step"] = job.get("error_step")
-    
+
     return response
 
 
@@ -2256,7 +2273,7 @@ async def download_file(
     # Prevent path traversal
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
-    
+
     # Find job video_id from memory or disk
     video_id = None
     if job_id in jobs:
@@ -2265,28 +2282,28 @@ async def download_file(
         metadata = load_job_metadata(job_id)
         if metadata is not None:
             video_id = metadata.get("video_id")
-    
+
     if not video_id:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     run_dir = OUTPUT_DIR / video_id
-    
+
     # Check both shorts and watermarked directories
     search_dirs = [
         run_dir / "watermarked",
         run_dir / "shorts"
     ]
-    
+
     file_path = None
     for search_dir in search_dirs:
         candidate = search_dir / filename
         if candidate.exists() and candidate.is_file():
             file_path = candidate
             break
-    
+
     if not file_path:
         raise HTTPException(status_code=404, detail="File not found")
-    
+
     return FileResponse(
         file_path,
         media_type="video/mp4",
@@ -2377,7 +2394,7 @@ def upload_to_drive(file_path: str, folder_id: str = None) -> dict:
     from google_auth_oauthlib.flow import InstalledAppFlow
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaFileUpload
-    
+
     # Use token.json for credentials (same as YouTube upload)
     # Check local directory first, then fallback to download-clip
     token_candidates = [
@@ -2390,10 +2407,10 @@ def upload_to_drive(file_path: str, folder_id: str = None) -> dict:
         if candidate.exists():
             token_path = candidate
             break
-    
+
     if not token_path:
         raise HTTPException(status_code=400, detail=f"token.json not found. Checked: {token_candidates}")
-    
+
     creds_data = json.loads(token_path.read_text())
     creds = Credentials(
         token=creds_data.get("token"),
@@ -2403,7 +2420,7 @@ def upload_to_drive(file_path: str, folder_id: str = None) -> dict:
         client_secret=creds_data.get("client_secret"),
         scopes=creds_data.get("scopes", ["https://www.googleapis.com/auth/drive.file"]),
     )
-    
+
     # Refresh if needed
     if creds.expired and creds.refresh_token:
         from google.auth.transport.requests import Request
@@ -2412,13 +2429,13 @@ def upload_to_drive(file_path: str, folder_id: str = None) -> dict:
         creds_data["token"] = creds.token
         creds_data["refresh_token"] = creds.refresh_token
         token_path.write_text(json.dumps(creds_data, indent=2))
-    
+
     service = build("drive", "v3", credentials=creds)
-    
+
     file_metadata = {"name": Path(file_path).name}
     if folder_id:
         file_metadata["parents"] = [folder_id]
-    
+
     media = MediaFileUpload(
         file_path,
         mimetype="video/mp4",
@@ -2430,7 +2447,7 @@ def upload_to_drive(file_path: str, folder_id: str = None) -> dict:
         media_body=media,
         fields="id,webViewLink",
     ).execute()
-    
+
     # Make file publicly accessible (optional)
     if folder_id != "shared":
         try:
@@ -2440,7 +2457,7 @@ def upload_to_drive(file_path: str, folder_id: str = None) -> dict:
             ).execute()
         except Exception:
             pass
-    
+
     return {
         "file_id": file["id"],
         "web_view_url": file.get("webViewLink", f"https://drive.google.com/file/d/{file['id']}/view"),
@@ -2457,20 +2474,20 @@ async def upload_job_to_drive(
     """Upload a rendered video file to Google Drive."""
     import logging
     logger = logging.getLogger(__name__)
-    
+
     try:
         # Load job metadata
         job = load_job_metadata(job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
-        
+
         video_id = job.get("video_id")
         if not video_id:
             raise HTTPException(status_code=400, detail="Video ID not found")
-        
+
         run_dir = OUTPUT_DIR / video_id
         logger.info(f"Looking for file in: {run_dir}")
-        
+
         # Find the file (check watermarked dir first)
         file_path = None
         for search_dir in [run_dir / "watermarked", run_dir / "shorts"]:
@@ -2480,13 +2497,13 @@ async def upload_job_to_drive(
                     file_path = candidate
                     logger.info(f"Found file: {file_path}")
                     break
-        
+
         if not file_path:
             raise HTTPException(status_code=404, detail=f"File not found: {filename}")
-        
+
         # Upload to Drive
         result = upload_to_drive(str(file_path), folder_id)
-        
+
         return {
             "job_id": job_id,
             "video_id": video_id,
@@ -2514,7 +2531,7 @@ async def upload_video_to_drive(
 ):
     """
     Upload a video file directly to Google Drive.
-    
+
     Accepts multipart/form-data with a video file.
     Optional folder_id to specify destination folder.
     Returns file_id and web_view_url.
@@ -2524,29 +2541,29 @@ async def upload_video_to_drive(
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaFileUpload
-    
+
     logger = logging.getLogger(__name__)
-    
+
     # Validate file type
     if not file.filename.lower().endswith((".mp4", ".mkv", ".webm", ".mov")):
         raise HTTPException(
             status_code=400,
             detail="Only video files (mp4, mkv, webm, mov) are supported"
         )
-    
+
     # Save uploaded file to temp location
     temp_path = UPLOAD_TEMP_DIR / f"{uuid.uuid4()}_{file.filename}"
     try:
         content = await file.read()
         temp_path.write_bytes(content)
-        
+
         # Check file size
         file_size = temp_path.stat().st_size
         if file_size == 0:
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
-        
+
         logger.info(f"Uploaded temp file: {temp_path} ({file_size} bytes)")
-        
+
         # Get credentials
         token_candidates = [
             Path(APP_DIR) / "token.json",
@@ -2558,13 +2575,13 @@ async def upload_video_to_drive(
             if candidate.exists():
                 token_path = candidate
                 break
-        
+
         if not token_path:
             raise HTTPException(
                 status_code=400,
                 detail=f"token.json not found. Checked: {token_candidates}"
             )
-        
+
         creds_data = json.loads(token_path.read_text())
         creds = Credentials(
             token=creds_data.get("token"),
@@ -2574,7 +2591,7 @@ async def upload_video_to_drive(
             client_secret=creds_data.get("client_secret"),
             scopes=creds_data.get("scopes", ["https://www.googleapis.com/auth/drive.file"]),
         )
-        
+
         # Refresh if needed
         if creds.expired and creds.refresh_token:
             from google.auth.transport.requests import Request
@@ -2582,38 +2599,38 @@ async def upload_video_to_drive(
             creds_data["token"] = creds.token
             creds_data["refresh_token"] = creds.refresh_token
             token_path.write_text(json.dumps(creds_data, indent=2))
-        
+
         # Build Drive service and upload
         service = build("drive", "v3", credentials=creds)
-        
+
         file_metadata = {"name": file.filename}
         if folder_id:
             file_metadata["parents"] = [folder_id]
-        
+
         media = MediaFileUpload(
             str(temp_path),
             mimetype="video/mp4",
             resumable=True,
         )
-        
+
         uploaded_file = service.files().create(
             body=file_metadata,
             media_body=media,
             fields="id,webViewLink,name",
         ).execute()
-        
+
         logger.info(f"Uploaded to Drive: {uploaded_file.get('name')} (ID: {uploaded_file.get('id')})")
-        
+
         return {
             "filename": uploaded_file.get("name"),
             "file_id": uploaded_file.get("id"),
             "web_view_url": uploaded_file.get(
-                "webViewLink", 
+                "webViewLink",
                 f"https://drive.google.com/file/d/{uploaded_file.get('id')}/view"
             ),
             "size": file_size,
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:

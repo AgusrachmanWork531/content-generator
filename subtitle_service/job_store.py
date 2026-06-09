@@ -110,6 +110,14 @@ class JobStore:
         """Save job state to disk."""
         job_dir = self.get_job_dir(job_id)
         result_path = job_dir / "result.json"
+        duration_seconds = None
+        if job.created_at and job.completed_at:
+            try:
+                created_at = datetime.fromisoformat(str(job.created_at).replace("Z", "+00:00"))
+                completed_at = datetime.fromisoformat(str(job.completed_at).replace("Z", "+00:00"))
+                duration_seconds = round((completed_at - created_at).total_seconds(), 3)
+            except Exception:
+                duration_seconds = None
         
         # Build result dict
         result = {
@@ -122,6 +130,7 @@ class JobStore:
             "error_code": job.error_code,
             "created_at": job.created_at,
             "completed_at": job.completed_at,
+            "duration_seconds": duration_seconds,
         }
         
         if job.outputs:

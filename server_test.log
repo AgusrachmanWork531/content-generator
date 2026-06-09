@@ -1,0 +1,9 @@
+[service] ERROR: Unknown option: --port
+Usage:
+  ./run_service.sh [--background|--status|--stop|--help]
+
+Options:
+  --background   Start API in background and wait for /health
+  --status       Show PID, port, and health status
+  --stop         Stop API process
+  --help         Show this help

@@ -1,0 +1,20 @@
+{
+  "regionCode": "ID",
+  "categories": [
+    "24",
+    "23",
+    "22"
+  ],
+  "maxResultsPerCategory": 50,
+  "minViewCount": 50000,
+  "minCommentCount": 100,
+  "preferredDurationMinutes": {
+    "min": 3,
+    "max": 60
+  },
+  "sortBy": "trend_score",
+  "limit": 30,
+  "num_clips": 3,
+  "quality": "1080",
+  "languages": "id,en"
+}

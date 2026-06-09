@@ -9,14 +9,8 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from typing import Iterable
 
 logger = logging.getLogger(__name__)
-
-try:
-    from auto_thumbnail import generate_thumbnail as generate_auto_thumbnail
-except Exception:
-    generate_auto_thumbnail = None
 
 # 5 Model Transisi: (nama, xfade_type, xfade_dur, sfx_filter, sfx_vol)
 TRANSITION_MODELS = [
@@ -271,6 +265,22 @@ def _cleanup_previous_opening_artifacts(opening_dir: Path) -> None:
             _remove_quietly(path)
 
 
+def _is_watermarked_delivery_file(path: Path) -> bool:
+    return (
+        path.is_file()
+        and path.name.endswith("_wm.mp4")
+        and "_telegram" not in path.stem
+        and path.stat().st_size > 0
+    )
+
+
+def _watermarked_sources(run_path: Path) -> list[Path]:
+    watermarked_dir = run_path / "watermarked"
+    if not watermarked_dir.exists():
+        return []
+    return sorted(path for path in watermarked_dir.glob("*_wm.mp4") if _is_watermarked_delivery_file(path))
+
+
 async def merge_opening_and_short(
     opening_video_path: str,
     short_video_path: str,
@@ -314,22 +324,6 @@ async def merge_opening_and_short(
         return False
 
 
-async def _extract_thumbnail(short_path: str, thumbnail_path: str) -> bool:
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-ss",
-        "0.8",
-        "-i",
-        short_path,
-        "-frames:v",
-        "1",
-        thumbnail_path,
-    ]
-    result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True)
-    return result.returncode == 0 and os.path.exists(thumbnail_path)
-
-
 async def apply_opening_to_run_dir(
     run_dir: str,
     narration_text: str,
@@ -337,17 +331,12 @@ async def apply_opening_to_run_dir(
     rate: str = "+10%",
     pitch: str = "+0Hz",
     image_path: str = None,
-    thumbnail_title: str = "",
-    thumbnail_talents: Iterable[str] = (),
-    source_video: str = None,
-    thumbnail_font_path: str = None,
-    upload_title: str = "",
-    source_title: str = "",
     bgm_path: str = None,
     bgm_volume: float = 0.30,
+    **kwargs  # Accept and ignore deprecated arguments
 ) -> dict:
     run_path = Path(run_dir)
-    shorts_dir = run_path / "shorts"
+    watermarked_sources = _watermarked_sources(run_path)
     opening_dir = run_path / "opening"
     opening_dir.mkdir(parents=True, exist_ok=True)
     _cleanup_previous_opening_artifacts(opening_dir)
@@ -355,8 +344,8 @@ async def apply_opening_to_run_dir(
     logger.info(f"Applying opening to run_dir: {run_dir}")
     logger.info(f"  narration: {narration_text[:50]}...")
     logger.info(f"  voice: {voice}, rate: {rate}, pitch: {pitch}")
+    logger.info("  input_dir: watermarked (non-telegram *_wm.mp4)")
 
-    shorts = sorted(shorts_dir.glob("short_*.mp4"))
     highlights = _read_highlights(run_path)
     results = []
 
@@ -368,55 +357,32 @@ async def apply_opening_to_run_dir(
             "results": [],
         }
 
-    for short_path in shorts:
-        stem = short_path.stem
-        thumb_path = opening_dir / f"{stem}_thumb.jpg"
-        merged_path = opening_dir / f"{stem}_with_opening.mp4"
-        backup_path = opening_dir / f"{stem}_original.mp4"
-        highlight = _highlight_for_short(highlights, stem)
-        source_start = _highlight_time(highlight, "start", "start_second", "startSecond")
-        source_end = _highlight_time(highlight, "end", "end_second", "endSecond")
-        effective_thumbnail_title = thumbnail_title.strip() or upload_title.strip() or narration_text.strip()
+    if not watermarked_sources:
+        return {
+            "status": "failed",
+            "reason": "no_watermarked_non_telegram_input",
+            "processed_count": 0,
+            "success_count": 0,
+            "results": [],
+        }
 
-        thumbnail = image_path if image_path and Path(image_path).exists() else None
-        auto_thumbnail_path = None
-        if thumbnail and effective_thumbnail_title and generate_auto_thumbnail:
-            titled_image_path = opening_dir / f"{stem}_opening_title.jpg"
-            try:
-                payload = await asyncio.to_thread(
-                    generate_auto_thumbnail,
-                    input_path=thumbnail,
-                    output_path=str(titled_image_path),
-                    title=effective_thumbnail_title,
-                    talents=thumbnail_talents,
-                    samples=1,
-                    font_path=thumbnail_font_path,
-                )
-                if payload.get("status") == "success" and titled_image_path.exists():
-                    thumbnail = str(titled_image_path)
-            except Exception as e:
-                logger.warning(f"Opening title overlay failed for {thumbnail}: {e}")
-        if not thumbnail and effective_thumbnail_title and generate_auto_thumbnail:
-            auto_thumbnail_path = opening_dir / f"{stem}_auto_thumbnail.jpg"
-            thumbnail_input = source_video if source_video and Path(source_video).exists() else str(short_path)
-            try:
-                payload = await asyncio.to_thread(
-                    generate_auto_thumbnail,
-                    input_path=thumbnail_input,
-                    output_path=str(auto_thumbnail_path),
-                    title=effective_thumbnail_title,
-                    talents=thumbnail_talents,
-                    samples=8,
-                    start=source_start if thumbnail_input != str(short_path) else None,
-                    end=source_end if thumbnail_input != str(short_path) else None,
-                    font_path=thumbnail_font_path,
-                )
-                if payload.get("status") == "success" and auto_thumbnail_path.exists():
-                    thumbnail = str(auto_thumbnail_path)
-            except Exception as e:
-                logger.warning(f"Auto thumbnail failed for {short_path}: {e}")
-        if not thumbnail and await _extract_thumbnail(str(short_path), str(thumb_path)):
-            thumbnail = str(thumb_path)
+    for short_path in watermarked_sources:
+        stem = short_path.stem.removesuffix("_wm")
+        thumb_path = opening_dir / f"{stem}_thumb.jpg"
+        merged_path = opening_dir / f"{short_path.stem}_with_opening.mp4"
+        backup_path = opening_dir / f"{short_path.stem}_original.mp4"
+        highlight = _highlight_for_short(highlights, stem)
+        source_end = _highlight_time(highlight, "end", "end_second", "endSecond")
+
+        thumbnail = image_path if image_path and Path(image_path).is_file() else None
+        if not thumbnail:
+            results.append({
+                "short": str(short_path),
+                "status": "error",
+                "message": "opening_thumbnail_asset_missing",
+                "expected": image_path,
+            })
+            continue
 
         target_width, target_height = await _get_video_size(str(short_path))
         ok, opening_path = await generate_opening_video(
@@ -491,8 +457,6 @@ async def apply_opening_to_run_dir(
         results.append({
             "short": str(short_path),
             "status": "success",
-            "source_video": source_video,
-            "source_start": source_start,
             "source_end": source_end,
             "opening_duration": opening_duration,
         })
@@ -502,16 +466,11 @@ async def apply_opening_to_run_dir(
 
     success_count = sum(1 for item in results if item.get("status") == "success")
     payload = {
-        "status": "success" if success_count == len(shorts) else "partial",
-        "processed_count": len(shorts),
+        "status": "success" if success_count == len(watermarked_sources) else "partial",
+        "processed_count": len(watermarked_sources),
         "success_count": success_count,
+        "input_dir": str(run_path / "watermarked"),
         "narration_text": narration_text,
-        "thumbnail_title": thumbnail_title,
-        "thumbnail_talents": list(thumbnail_talents or []),
-        "source_video": source_video,
-        "thumbnail_font_path": thumbnail_font_path,
-        "upload_title": upload_title,
-        "source_title": source_title,
         "bgm_path": bgm_path,
         "bgm_volume": bgm_volume,
         "results": results,
@@ -590,22 +549,24 @@ def main() -> None:
         stream=sys.stdout
     )
     
-    parser = argparse.ArgumentParser(description="Generate opening narration video or prepend it to rendered shorts.")
-    parser.add_argument("run_dir", nargs="?", help="Run directory containing shorts/short_*.mp4")
+    parser = argparse.ArgumentParser(description="Generate opening narration video or prepend it to watermarked videos.")
+    parser.add_argument("run_dir", nargs="?", help="Run directory containing watermarked/*_wm.mp4")
     parser.add_argument("--text", required=True, help="Opening narration text")
-    parser.add_argument("--image", help="Optional image path used as opening visual")
+    parser.add_argument("--image", help="Path to static image overlay")
     parser.add_argument("--output", help="Render opening narration only to this MP4 path")
     parser.add_argument("--voice", default="id-ID-GadisNeural")
     parser.add_argument("--rate", default="+10%")
     parser.add_argument("--pitch", default="+0Hz")
-    parser.add_argument("--thumbnail-title", default="", help="Manual title for auto thumbnail generated from short frames.")
-    parser.add_argument("--thumbnail-talent", action="append", default=[], help="Manual talent name for auto thumbnail label. Repeat or comma-separate.")
-    parser.add_argument("--source-video", help="Original source video for auto thumbnail frame extraction.")
-    parser.add_argument("--thumbnail-font", help="TTF/OTF font path for opening thumbnail title and talent labels.")
-    parser.add_argument("--upload-title", default="", help="Upload title used as thumbnail title fallback.")
-    parser.add_argument("--source-title", default="", help="Source title label shown at top-left of generated thumbnail.")
-    parser.add_argument("--bgm", default="", help="Optional background music path mixed under opening narration.")
-    parser.add_argument("--bgm-volume", type=float, default=0.30)
+    parser.add_argument("--bgm", help="Path to background music")
+    parser.add_argument("--bgm-volume", type=float, default=0.30, help="Volume level for BGM (default 0.30)")
+
+    # Deprecated arguments (ignored but accepted to not break old callers immediately)
+    parser.add_argument("--thumbnail-title", help=argparse.SUPPRESS)
+    parser.add_argument("--thumbnail-talent", action="append", help=argparse.SUPPRESS)
+    parser.add_argument("--source-video", help=argparse.SUPPRESS)
+    parser.add_argument("--thumbnail-font", help=argparse.SUPPRESS)
+    parser.add_argument("--upload-title", help=argparse.SUPPRESS)
+    parser.add_argument("--source-title", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     # Show arguments in log
@@ -636,12 +597,6 @@ def main() -> None:
                 rate=args.rate,
                 pitch=args.pitch,
                 image_path=args.image,
-                thumbnail_title=args.thumbnail_title,
-                thumbnail_talents=args.thumbnail_talent,
-                source_video=args.source_video,
-                thumbnail_font_path=args.thumbnail_font,
-                upload_title=args.upload_title,
-                source_title=args.source_title,
                 bgm_path=args.bgm,
                 bgm_volume=args.bgm_volume,
             )

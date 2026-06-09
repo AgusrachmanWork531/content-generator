@@ -19,58 +19,87 @@ SUBTITLE_STYLES: Dict[str, dict] = {
         "words_per_cap": 2,
         "max_chars_per_caption": 18,
         "font": "Montserrat ExtraBold",
-        "fontsize": 76,
-        "outline": 8,
-        "shadow": 0,
-        "margin_v": 360,
-        "margin_lr": 170,
-        "active": "#FFB117",
-        "inactive": "#FFFFFF",
+        "fontsize": 82,
+        "outline": 9,
+        "shadow": 1,
+        "margin_v": 480,
+        "margin_lr": 120,
+        "active": "#FFCC00",
+        "inactive": "#E0E0E0",
         "outline_color": "#000000",
-        "tail_hold": 0.08,
-        "pop_in_ms": 80,
-        "pop_out_ms": 140,
-        "pop_outline_extra": 2,
-        "pop_blur": 0.25,
+        "tail_hold": 0.12,
+        "pop_in_ms": 50,
+        "pop_out_ms": 120,
+        "pop_outline_extra": 4,
+        "pop_blur": 0.5,
+        "fsp": 2,
         "use_scale_animation": False,
+        "per_word_popup": True,
     },
     "viral_clip_pro": {
         "words_per_cap": 2,
-        "max_chars_per_caption": 18,
+        "max_chars_per_caption": 16,
         "font": "Montserrat ExtraBold",
-        "fontsize": 76,
-        "outline": 8,
-        "shadow": 0,
-        "margin_v": 360,
-        "margin_lr": 170,
-        "active": "#FFB117",
-        "inactive": "#FFFFFF",
+        "fontsize": 82,
+        "outline": 9,
+        "shadow": 1,
+        "margin_v": 480,
+        "margin_lr": 120,
+        "active": "#FFCC00",
+        "inactive": "#E0E0E0",
         "outline_color": "#000000",
-        "tail_hold": 0.08,
-        "pop_in_ms": 80,
-        "pop_out_ms": 140,
-        "pop_outline_extra": 2,
-        "pop_blur": 0.25,
+        "tail_hold": 0.12,
+        "pop_in_ms": 50,
+        "pop_out_ms": 120,
+        "pop_outline_extra": 4,
+        "pop_blur": 0.5,
+        "fsp": 2,
         "use_scale_animation": False,
+        "per_word_popup": True,
     },
     "shorts_pro_pop": {
         "words_per_cap": 2,
-        "max_chars_per_caption": 18,
+        "max_chars_per_caption": 16,
         "font": "Montserrat ExtraBold",
-        "fontsize": 76,
-        "outline": 8,
-        "shadow": 0,
-        "margin_v": 360,
-        "margin_lr": 170,
-        "active": "#FFB117",
-        "inactive": "#FFFFFF",
+        "fontsize": 82,
+        "outline": 9,
+        "shadow": 1,
+        "margin_v": 480,
+        "margin_lr": 120,
+        "active": "#FFCC00",
+        "inactive": "#E0E0E0",
         "outline_color": "#000000",
-        "tail_hold": 0.08,
+        "tail_hold": 0.12,
         "pop_in_ms": 90,
-        "pop_out_ms": 200,
-        "pop_outline_extra": 3,
+        "pop_out_ms": 180,
+        "pop_outline_extra": 4,
         "pop_blur": 0.8,
+        "fsp": 2,
         "use_scale_animation": True,
+        "per_word_popup": True,
+    },
+    "cinema_bold": {
+        # Preset premium – CapCut / Submagic style.
+        # Per-word popup: setiap kata yang diucapkan mendapat Dialogue sendiri.
+        "words_per_cap": 2,
+        "max_chars_per_caption": 16,
+        "font": "Montserrat Black",
+        "fontsize": 82,
+        "outline": 9,
+        "shadow": 1,
+        "margin_v": 480,
+        "margin_lr": 120,
+        "active": "#FFCC00",       # Kuning cerah, kontras tinggi
+        "inactive": "#E0E0E0",     # Abu muda agar terlihat tapi tidak dominan
+        "outline_color": "#000000",
+        "tail_hold": 0.12,
+        "pop_in_ms": 50,           # Sangat cepat – snappy & presisi
+        "pop_out_ms": 120,
+        "pop_outline_extra": 4,    # Glow effect dramatis saat kata aktif
+        "pop_blur": 0.5,
+        "fsp": 3,                  # Letter spacing premium
+        "use_scale_animation": False,
+        "per_word_popup": True,    # Tiap kata diucapkan = popup sendiri
     },
     "default": {
         "words_per_cap": 3,
@@ -89,17 +118,19 @@ SUBTITLE_STYLES: Dict[str, dict] = {
         "pop_out_ms": 200,
         "pop_outline_extra": 3,
         "pop_blur": 0.8,
+        "fsp": 0,
         "use_scale_animation": False,
+        "per_word_popup": False,
     },
 }
 
 
-def get_subtitle_style(style_name: str = "viral_clip_pro") -> dict:
+def get_subtitle_style(style_name: str = "cinema_bold") -> dict:
     """Get subtitle style configuration by name."""
-    return SUBTITLE_STYLES.get(style_name, SUBTITLE_STYLES["viral_clip_pro"])
+    return SUBTITLE_STYLES.get(style_name, SUBTITLE_STYLES["cinema_bold"])
 
 
-def validate_caption_length(caption_text: str, style_name: str = "viral_clip_pro") -> tuple[bool, str]:
+def validate_caption_length(caption_text: str, style_name: str = "cinema_bold") -> tuple[bool, str]:
     """
     Validate caption text length against style's max_chars_per_caption.
     

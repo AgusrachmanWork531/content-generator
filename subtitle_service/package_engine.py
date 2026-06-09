@@ -25,6 +25,7 @@ from .errors import (
     BurnLibassNotAvailableError,
     NoAudioStreamError,
     UnknownSubtitleError,
+    NoVisibleSubtitleEventsError,
 )
 from .models import SubtitleOutput, SubtitleMetadata, SubtitleJobStatus
 from .autocaptions_adapter import get_auto_captions_adapter, AutoCaptionsAdapter
@@ -385,6 +386,374 @@ class PackageEngine:
             )
 
         return result
+
+    @staticmethod
+    def _calculate_visible_transcript_interval(
+        start: float,
+        end: float,
+        clip_start: float,
+        opening_duration: float,
+        max_duration: float,
+    ) -> Optional[tuple[float, float]]:
+        """Map a source transcript interval into the final video timeline."""
+        if end <= start:
+            return None
+
+        content_duration = max_duration - opening_duration
+        if content_duration <= 0:
+            return None
+
+        source_relative_start = start - clip_start
+        source_relative_end = end - clip_start
+
+        if source_relative_end <= 0:
+            return None
+
+        if source_relative_start >= content_duration:
+            return None
+
+        content_start = max(0.0, source_relative_start)
+        content_end = min(source_relative_end, content_duration)
+        if content_end <= content_start:
+            return None
+
+        return (
+            content_start + opening_duration,
+            content_end + opening_duration,
+        )
+
+    def _generate_ass_from_transcript(
+        self,
+        transcript: list,
+        output_path,
+        clip_start: float,
+        opening_duration: float,
+        style: str,
+        max_duration: float,
+    ) -> int:
+        """Generate ASS subtitle file from transcript segments.
+
+        Returns:
+            int: Number of visible subtitle events in the generated ASS file.
+        """
+        style_config = self._get_ass_style(style)
+        lines = [
+            "[Script Info]",
+            f"Title: {style}",
+            "ScriptType: v4.00+",
+            "PlayResX: 1080",
+            "PlayResY: 1920",
+            "ScaledBorderAndShadow: yes",
+            "",
+            "[V4+ Styles]",
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+            f"Style: {style}, {style_config}",
+            "",
+            "[Events]",
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+        ]
+
+        event_count = 0
+
+        for segment in transcript:
+            if not isinstance(segment, dict):
+                continue
+            text = segment.get("text", "")
+            if not text or not isinstance(text, str) or not text.strip():
+                continue
+            start_val = segment.get("start")
+            end_val = segment.get("end")
+            if start_val is None or end_val is None:
+                continue
+            try:
+                start = float(start_val)
+                end = float(end_val)
+            except (ValueError, TypeError):
+                continue
+
+            interval = self._calculate_visible_transcript_interval(
+                start=start,
+                end=end,
+                clip_start=clip_start,
+                opening_duration=opening_duration,
+                max_duration=max_duration,
+            )
+            if interval is None:
+                continue
+            adjusted_start, adjusted_end = interval
+
+            start_str = self._format_ass_timestamp(adjusted_start)
+            end_str = self._format_ass_timestamp(adjusted_end)
+            # Escape backslashes and newlines for ASS format
+            text_escaped = text.replace(chr(92), chr(92)+chr(92)).replace(chr(10), chr(92)+"N")
+
+            lines.append(f"Dialogue: 0,{start_str},{end_str},{style},,0,0,0,,{text_escaped}")
+            event_count += 1
+
+        output_path.write_text(chr(10).join(lines), encoding="utf-8")
+        return event_count
+
+    def generate_from_transcript_burn(
+        self,
+        job_id: str,
+        video_path: str,
+        selected_transcript: list,
+        clip_start: float = 0.0,
+        opening_duration: float = 0.0,
+        language: str = "id",
+        style: str = "viral_clip_pro",
+        replace_original: bool = False,
+    ) -> dict:
+        """Generate subtitles from known transcript and burn to video."""
+        resolved_path = self.job_store.resolve_video_path(video_path)
+
+        is_valid, error = self.validate_video(resolved_path)
+        if not is_valid:
+            raise VideoNotFoundError(video_path, error)
+
+        job_dir = self.job_store.get_job_dir(job_id)
+        video_info = self.ffmpeg.get_video_info(resolved_path)
+        duration = video_info.get("duration", 0.0)
+
+        self.job_store.update_job(job_id, status="processing")
+
+        # Generate ASS subtitle from transcript
+        ass_path = job_dir / "subtitle.ass"
+        ass_event_count = self._generate_ass_from_transcript(
+            transcript=selected_transcript,
+            output_path=ass_path,
+            clip_start=clip_start,
+            opening_duration=opening_duration,
+            style=style,
+            max_duration=float(duration),
+        )
+
+        if not ass_path.exists():
+            self.job_store.update_job(
+                job_id,
+                status=SubtitleJobStatus.FAILED.value,
+                error="ASS file not generated",
+                error_code="ASS_FILE_NOT_GENERATED",
+            )
+            raise UnknownSubtitleError("ASS file was not generated")
+
+        # Validate that ASS file has visible subtitle events
+        if ass_event_count <= 0:
+            self.job_store.update_job(
+                job_id,
+                status=SubtitleJobStatus.FAILED.value,
+                error="selected_transcript did not produce any visible subtitle events",
+                error_code="NO_VISIBLE_SUBTITLE_EVENTS",
+            )
+            raise NoVisibleSubtitleEventsError()
+
+        # Also generate SRT
+        srt_path = job_dir / "subtitle.srt"
+        try:
+            self._generate_srt_from_transcript(
+                transcript=selected_transcript,
+                output_path=srt_path,
+                clip_start=clip_start,
+                opening_duration=opening_duration,
+                max_duration=float(duration),
+            )
+        except Exception:
+            pass
+
+        # Burn subtitle - with proper validation and error handling
+        burned_video = None
+        can_burn, burn_reason = self.ffmpeg.can_burn_subtitles()
+
+        # Fail if cannot burn subtitles
+        if not can_burn:
+            self.job_store.update_job(job_id, status="failed", error=burn_reason)
+            raise BurnError(
+                video_path=str(resolved_path),
+                subtitle_path=str(ass_path),
+                reason=burn_reason,
+            )
+
+        # Attempt to burn subtitle
+        try:
+            output_video = job_dir / "video_subtitled.mp4"
+            burned_video = self.ffmpeg.burn_subtitle(
+                video_path=resolved_path,
+                subtitle_path=ass_path,
+                output_path=output_video,
+            )
+        except Exception as e:
+            self.job_store.update_job(job_id, status="failed", error=str(e))
+            raise BurnError(
+                video_path=str(resolved_path),
+                subtitle_path=str(ass_path),
+                reason=str(e),
+            )
+
+        # Validate burned video exists and not empty
+        if not burned_video or not Path(burned_video).exists():
+            self.job_store.update_job(job_id, status="failed", error="Burned video not generated")
+            raise BurnError(
+                video_path=str(resolved_path),
+                subtitle_path=str(ass_path),
+                reason="Burned video was not generated",
+            )
+
+        burned_video_path = Path(burned_video)
+        if not burned_video_path.exists() or burned_video_path.stat().st_size <= 0:
+            self.job_store.update_job(job_id, status="failed", error="Burned video is missing or empty")
+            raise BurnError(
+                video_path=str(resolved_path),
+                subtitle_path=str(ass_path),
+                reason=f"Burned video is missing or empty: {burned_video}",
+            )
+
+        outputs = {
+            "ass": str(ass_path) if ass_path.exists() else None,
+            "srt": str(srt_path) if srt_path.exists() else None,
+            "burned_video": str(burned_video) if burned_video else None,
+        }
+
+        # Handle replace_original flag
+        if replace_original:
+            # Original video path
+            original_video = self.job_store.resolve_video_path(video_path)
+
+            # Backup path
+            backup_video = original_video.with_name(
+                f"{original_video.name}.pre_subtitle.bak"
+            )
+
+            # Temporary replacement path
+            replace_tmp = original_video.with_name(
+                f"{original_video.name}.subtitle.tmp"
+            )
+
+            # Create backup only if not exists
+            if not backup_video.exists():
+                shutil.copy2(original_video, backup_video)
+
+            # Copy burned video to temporary file
+            shutil.copy2(burned_video, replace_tmp)
+
+            # Validate temporary file
+            if not replace_tmp.exists() or replace_tmp.stat().st_size <= 0:
+                self.job_store.update_job(job_id, status="failed", error="Replacement temp video missing or empty")
+                raise BurnError(
+                    video_path=str(original_video),
+                    subtitle_path=str(ass_path),
+                    reason=f"Replacement temp video is missing or empty: {replace_tmp}",
+                )
+
+            # Atomic replace
+            replace_tmp.replace(original_video)
+
+            # Validate original after replacement
+            if not original_video.exists() or original_video.stat().st_size <= 0:
+                self.job_store.update_job(job_id, status="failed", error="Original video replacement failed")
+                raise BurnError(
+                    video_path=str(original_video),
+                    subtitle_path=str(ass_path),
+                    reason="Original video replacement failed",
+                )
+
+            # Update output to point to original
+            outputs["burned_video"] = str(original_video)
+
+        subtitle_output = SubtitleOutput(
+            ass=outputs.get("ass"),
+            srt=outputs.get("srt"),
+            vtt=None,
+            burned_video=outputs.get("burned_video"),
+        )
+
+        metadata = SubtitleMetadata(
+            language=language,
+            duration=duration,
+            engine="selected-transcript",
+            word_timestamps=False,
+        )
+
+        # Update job to completed only after all validations and optional replace succeeded
+        self.job_store.update_job(
+            job_id,
+            status=SubtitleJobStatus.COMPLETED.value,
+            outputs=subtitle_output,
+            metadata=metadata,
+        )
+
+        return {"outputs": outputs, "metadata": metadata}
+
+    def _generate_srt_from_transcript(
+        self,
+        transcript: list,
+        output_path,
+        clip_start: float,
+        opening_duration: float,
+        max_duration: float,
+    ) -> None:
+        """Generate SRT subtitle file from transcript segments."""
+        lines = []
+        index = 1
+        for segment in transcript:
+            if not isinstance(segment, dict):
+                continue
+            text = segment.get("text", "")
+            if not text or not isinstance(text, str) or not text.strip():
+                continue
+            start_val = segment.get("start")
+            end_val = segment.get("end")
+            if start_val is None or end_val is None:
+                continue
+            try:
+                start = float(start_val)
+                end = float(end_val)
+            except (ValueError, TypeError):
+                continue
+
+            interval = self._calculate_visible_transcript_interval(
+                start=start,
+                end=end,
+                clip_start=clip_start,
+                opening_duration=opening_duration,
+                max_duration=max_duration,
+            )
+            if interval is None:
+                continue
+            adjusted_start, adjusted_end = interval
+
+            start_str = self._format_srt_timestamp(adjusted_start)
+            end_str = self._format_srt_timestamp(adjusted_end)
+            lines.append(str(index))
+            lines.append(f"{start_str} --> {end_str}")
+            lines.append(text)
+            lines.append("")
+            index += 1
+
+        output_path.write_text(chr(10).join(lines), encoding="utf-8")
+
+    def _format_ass_timestamp(self, seconds: float) -> str:
+        """Format seconds to ASS timestamp (H:MM:SS.cc)."""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = seconds % 60
+        centisecs = int((secs - int(secs)) * 100)
+        return f"{hours}:{minutes:02d}:{int(secs):02d}.{centisecs:02d}"
+
+    def _format_srt_timestamp(self, seconds: float) -> str:
+        """Format seconds to SRT timestamp (HH:MM:SS,mmm)."""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        millis = int((seconds % 1) * 1000)
+        return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+    def _get_ass_style(self, style: str) -> str:
+        """Get ASS style configuration string."""
+        styles = {
+            "viral_clip_pro": "Inter,50,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,2,2,10,10,30,1",
+            "default": "Arial,40,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1",
+        }
+        return styles.get(style, styles["default"])
 
 
 # Global instance

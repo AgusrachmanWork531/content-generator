@@ -10,9 +10,12 @@ API Endpoints:
 3. GET /subtitle/jobs/{job_id} - Get subtitle job status
 """
 
+import json
+import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -24,6 +27,80 @@ from .errors import SubtitleError
 from .models import SubtitleJob, SubtitleJobStatus
 from .package_engine import get_package_engine
 from .job_store import get_job_store
+
+
+# Storage paths - match api_server.py configuration
+DEFAULT_APP_DIR = Path(__file__).resolve().parent.parent
+STORAGE_DIR = Path(os.environ.get("CONTENT_SHORT_STORAGE_DIR", DEFAULT_APP_DIR / "storage")).resolve()
+OUTPUT_DIR = STORAGE_DIR / "free-viral-shorts"
+
+
+def _extract_video_id_from_path(video_path: str) -> Optional[str]:
+    """
+    Extract YouTube video ID from video_path.
+    
+    Supports:
+    - /absolute/path/to/storage/free-viral-shorts/<video_id>/shorts/short_01.mp4
+    - storage/free-viral-shorts/<video_id>/shorts/short_01.mp4
+    - <video_id>/shorts/short_01.mp4
+    
+    Returns video_id or None if not found.
+    """
+    # Pattern for content-short storage: free-viral-shorts/<video_id>/
+    pattern = r"(?:free-viral-shorts[/\\]([A-Za-z0-9_-]{11}))"
+    match = re.search(pattern, video_path)
+    if match:
+        return match.group(1)
+    
+    # Direct video_id if path is just the ID
+    if re.fullmatch(r"[A-Za-z0-9_-]{11}", video_path):
+        return video_path
+    
+    return None
+
+
+def _infer_opening_duration_from_result(video_path: str) -> float:
+    """
+    Infer opening_duration from result.json if not provided.
+    
+    Reads result.json from OUTPUT_DIR / <video_id> / result.json
+    and extracts opening_duration from highlights[0] or shorts[0].
+    
+    Returns 0.0 if not found.
+    """
+    video_id = _extract_video_id_from_path(video_path)
+    if not video_id:
+        return 0.0
+    
+    result_json_path = OUTPUT_DIR / video_id / "result.json"
+    if not result_json_path.exists():
+        return 0.0
+    
+    try:
+        result_data = json.loads(result_json_path.read_text())
+        
+        # Try highlights[0].opening_duration first
+        highlights = result_data.get("highlights", [])
+        if highlights and isinstance(highlights, list):
+            first_highlight = highlights[0]
+            if isinstance(first_highlight, dict):
+                opening_duration = first_highlight.get("opening_duration")
+                if opening_duration is not None and isinstance(opening_duration, (int, float)) and opening_duration > 0:
+                    return float(opening_duration)
+        
+        # Try shorts[0].opening_duration
+        shorts = result_data.get("shorts", [])
+        if shorts and isinstance(shorts, list):
+            first_short = shorts[0]
+            if isinstance(first_short, dict):
+                opening_duration = first_short.get("opening_duration")
+                if opening_duration is not None and isinstance(opening_duration, (int, float)) and opening_duration > 0:
+                    return float(opening_duration)
+        
+    except Exception:
+        pass
+    
+    return 0.0
 
 
 # Security
@@ -142,6 +219,27 @@ class BurnSubtitleRequest(BaseModel):
     audio_preset: Optional[str] = Field(
         default=None,
         description="Optional audio preprocessing preset: plain or speech"
+    )
+
+
+class BurnFromTranscriptRequest(BaseModel):
+    """Request model for burning subtitles from known clip transcript."""
+
+    video_path: str = Field(..., description="Path to video file")
+    selected_transcript: list[dict[str, Any]] = Field(
+        ...,
+        description="Clip transcript segments with source-video start/end/text"
+    )
+    clip_start: float = Field(..., description="Source-video start time of the rendered clip")
+    opening_duration: float = Field(
+        default=0.0,
+        description="Duration of prepended opening narration in seconds"
+    )
+    language: str = Field(default="id", description="Language code")
+    style: str = Field(default="viral_clip_pro", description="Subtitle style")
+    replace_original: bool = Field(
+        default=False,
+        description="Replace original video with burned version"
     )
 
 
@@ -321,6 +419,52 @@ async def burn_subtitle(
     }
 
 
+@router.post("/burn-from-transcript")
+async def burn_subtitle_from_transcript(
+    request: BurnFromTranscriptRequest,
+    background_tasks: BackgroundTasks,
+    token: str = Depends(verify_token),
+):
+    """Generate subtitles from selected_transcript and burn them without Whisper."""
+    settings = get_settings()
+
+    if not settings.enable_subtitle_api:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Subtitle API is not enabled. Set ENABLE_SUBTITLE_API=true",
+        )
+
+    if not request.selected_transcript:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="selected_transcript is required",
+        )
+
+    ensure_subtitle_output_dir()
+    job_store = get_job_store()
+    job = job_store.create_job(
+        video_path=request.video_path,
+        language=request.language,
+        output_formats=["ass", "srt"],
+        engine="selected-transcript",
+        style=request.style,
+        burn_subtitle=True,
+    )
+
+    background_tasks.add_task(
+        _run_subtitle_burn_from_transcript,
+        job.job_id,
+        request,
+    )
+
+    return {
+        "job_id": job.job_id,
+        "status": "pending",
+        "status_url": f"/subtitle/jobs/{job.job_id}",
+        "result_url": f"/subtitle/jobs/{job.job_id}",
+    }
+
+
 @router.get("/jobs/{job_id}")
 async def get_subtitle_job(
     job_id: str,
@@ -388,6 +532,13 @@ async def get_subtitle_job(
     
     if job.completed_at:
         response["completed_at"] = job.completed_at
+        if job.created_at:
+            try:
+                created_at = datetime.fromisoformat(str(job.created_at).replace("Z", "+00:00"))
+                completed_at = datetime.fromisoformat(str(job.completed_at).replace("Z", "+00:00"))
+                response["duration_seconds"] = round((completed_at - created_at).total_seconds(), 3)
+            except Exception:
+                pass
     
     return response
 
@@ -445,6 +596,46 @@ def _run_subtitle_burn(job_id: str, request: BurnSubtitleRequest):
             initial_prompt=request.initial_prompt,
             corrections_file=request.corrections_file,
             audio_preset=request.audio_preset,
+        )
+    except SubtitleError as e:
+        job_store = get_job_store()
+        job_store.update_job(
+            job_id,
+            status="failed",
+            error=e.message,
+            error_code=e.error_code,
+        )
+    except Exception as e:
+        job_store = get_job_store()
+        job_store.update_job(
+            job_id,
+            status="failed",
+            error=str(e)[:500],
+            error_code="UNKNOWN_SUBTITLE_ERROR",
+        )
+
+
+def _run_subtitle_burn_from_transcript(job_id: str, request: BurnFromTranscriptRequest):
+    """Run transcript-based subtitle burn in background."""
+    try:
+        # Infer opening_duration from result.json if not provided (equals 0)
+        # This makes the backend robust even when n8n doesn't send opening_duration
+        opening_duration = request.opening_duration
+        if opening_duration == 0.0:
+            inferred = _infer_opening_duration_from_result(request.video_path)
+            if inferred > 0:
+                opening_duration = inferred
+        
+        engine = get_package_engine()
+        engine.generate_from_transcript_burn(
+            job_id=job_id,
+            video_path=request.video_path,
+            selected_transcript=request.selected_transcript,
+            clip_start=request.clip_start,
+            opening_duration=opening_duration,
+            language=request.language,
+            style=request.style,
+            replace_original=request.replace_original,
         )
     except SubtitleError as e:
         job_store = get_job_store()

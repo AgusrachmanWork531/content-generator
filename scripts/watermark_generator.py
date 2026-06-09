@@ -22,6 +22,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+import shutil
 import shlex
 import subprocess
 import sys
@@ -105,6 +107,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "pix_fmt": "yuv420p",
     "overwrite": True,
 
+    # Telegram Bot API uploads are safest below 50 MB. Keep a buffer for
+    # multipart overhead and downstream proxy limits.
+    "telegram_delivery_enabled": True,
+    "telegram_target_mb": 45,
+    "telegram_audio_bitrate": "128k",
+    "telegram_min_video_bitrate_kbps": 800,
+    "telegram_max_video_bitrate_kbps": 3600,
+
     # Important:
     # False = failed watermark render becomes error, not original file.
     # True  = pipeline may continue, but watermarked_file is still not marked as success.
@@ -154,6 +164,10 @@ class WatermarkPlan:
     duration: float
     ffmpeg_filter: Optional[str] = None
     ffmpeg_command: Optional[str] = None
+    telegram_file: Optional[str] = None
+    telegram_size: Optional[int] = None
+    telegram_command: Optional[str] = None
+    telegram_error: Optional[str] = None
     dry_run: bool = False
     error: Optional[str] = None
 
@@ -197,6 +211,18 @@ def run_command(cmd: List[str], timeout: int = 600) -> subprocess.CompletedProce
         timeout=timeout,
         check=False,
     )
+
+
+def ffmpeg_bin() -> str:
+    for candidate in (
+        os.environ.get("FFMPEG_BIN"),
+        "/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg",
+        "/opt/homebrew/bin/ffmpeg",
+        "ffmpeg",
+    ):
+        if candidate:
+            return candidate
+    return "ffmpeg"
 
 
 def safe_float(value: Any, default: float = 0.0) -> float:
@@ -643,7 +669,7 @@ def generate_logo_asset(
 
     if not PIL_AVAILABLE:
         cmd = [
-            "ffmpeg",
+            ffmpeg_bin(),
             "-y",
             "-i",
             str(logo_file),
@@ -799,7 +825,7 @@ def render_with_asset(
 ) -> Tuple[bool, Optional[str], Optional[str]]:
     ensure_dir(output_file.parent)
 
-    cmd = ["ffmpeg"]
+    cmd = [ffmpeg_bin()]
     cmd += ["-y" if config.get("overwrite", True) else "-n"]
 
     cmd += [
@@ -851,7 +877,7 @@ def render_with_text(
 ) -> Tuple[bool, Optional[str], Optional[str]]:
     ensure_dir(output_file.parent)
 
-    cmd = ["ffmpeg"]
+    cmd = [ffmpeg_bin()]
     cmd += ["-y" if config.get("overwrite", True) else "-n"]
 
     cmd += [
@@ -886,6 +912,105 @@ def render_with_text(
         return False, "ffmpeg finished but output file is missing or empty", command_text
 
     return True, None, command_text
+
+
+def parse_bitrate_kbps(value: Any, default: int = 128) -> int:
+    if value is None:
+        return default
+
+    text = str(value).strip().lower()
+    if not text:
+        return default
+
+    try:
+        if text.endswith("k"):
+            return max(1, int(float(text[:-1])))
+        if text.endswith("m"):
+            return max(1, int(float(text[:-1]) * 1000))
+        return max(1, int(float(text) / 1000))
+    except Exception:
+        return default
+
+
+def render_telegram_delivery_file(
+    input_file: Path,
+    output_file: Path,
+    duration: float,
+    config: Dict[str, Any],
+    dry_run: bool,
+) -> Tuple[Optional[Path], Optional[int], Optional[str], Optional[str]]:
+    if not config.get("telegram_delivery_enabled", True):
+        return None, None, None, None
+
+    if duration <= 0:
+        duration = safe_float(probe_video(input_file).duration, 0.0)
+
+    if duration <= 0:
+        return None, None, None, "cannot determine video duration for telegram compression"
+
+    target_bytes = int(float(config.get("telegram_target_mb", 45)) * 1024 * 1024)
+    audio_bitrate = str(config.get("telegram_audio_bitrate", "128k"))
+    audio_kbps = parse_bitrate_kbps(audio_bitrate, default=128)
+    min_video_kbps = int(config.get("telegram_min_video_bitrate_kbps", 800))
+    max_video_kbps = int(config.get("telegram_max_video_bitrate_kbps", 3600))
+    total_kbps = int((target_bytes * 8) / duration / 1000)
+    video_kbps = max(min_video_kbps, min(max_video_kbps, total_kbps - audio_kbps - 80))
+
+    ensure_dir(output_file.parent)
+
+    if input_file.exists() and input_file.stat().st_size <= target_bytes:
+        command_text = f"copy {shlex.quote(str(input_file))} {shlex.quote(str(output_file))}"
+        if dry_run:
+            return output_file, None, command_text, None
+
+        shutil.copy2(input_file, output_file)
+        return output_file, output_file.stat().st_size, command_text, None
+
+    cmd = [
+        ffmpeg_bin(),
+        "-y" if config.get("overwrite", True) else "-n",
+        "-i",
+        str(input_file),
+        "-c:v",
+        "libx264",
+        "-b:v",
+        f"{video_kbps}k",
+        "-maxrate",
+        f"{int(video_kbps * 1.15)}k",
+        "-bufsize",
+        f"{int(video_kbps * 2.5)}k",
+        "-preset",
+        str(config.get("preset", "veryfast")),
+        "-pix_fmt",
+        str(config.get("pix_fmt", "yuv420p")),
+        "-c:a",
+        "aac",
+        "-b:a",
+        audio_bitrate,
+        "-movflags",
+        "+faststart",
+        str(output_file),
+    ]
+
+    command_text = " ".join(shlex.quote(part) for part in cmd)
+
+    if dry_run:
+        return output_file, None, command_text, None
+
+    completed = run_command(cmd, timeout=1200)
+
+    if completed.returncode != 0:
+        return None, None, command_text, completed.stderr.strip() or completed.stdout.strip() or "ffmpeg telegram compression failed"
+
+    if not output_file.exists() or output_file.stat().st_size <= 0:
+        return None, None, command_text, "telegram compression finished but output file is missing or empty"
+
+    if output_file.stat().st_size > target_bytes:
+        return output_file, output_file.stat().st_size, command_text, (
+            f"telegram output exceeds target: {output_file.stat().st_size} > {target_bytes}"
+        )
+
+    return output_file, output_file.stat().st_size, command_text, None
 
 
 def create_watermark_asset(
@@ -937,6 +1062,10 @@ def make_plan(
     asset_file: Optional[Path] = None,
     ffmpeg_filter: Optional[str] = None,
     ffmpeg_command: Optional[str] = None,
+    telegram_file: Optional[Path] = None,
+    telegram_size: Optional[int] = None,
+    telegram_command: Optional[str] = None,
+    telegram_error: Optional[str] = None,
     dry_run: bool = False,
     error: Optional[str] = None,
 ) -> WatermarkPlan:
@@ -962,6 +1091,10 @@ def make_plan(
         duration=meta.duration,
         ffmpeg_filter=ffmpeg_filter,
         ffmpeg_command=ffmpeg_command,
+        telegram_file=str(telegram_file) if telegram_file else None,
+        telegram_size=telegram_size,
+        telegram_command=telegram_command,
+        telegram_error=telegram_error,
         dry_run=dry_run,
         error=error,
     )
@@ -1082,6 +1215,14 @@ def process_highlight(
                     error=error,
                 )
 
+            telegram_file, telegram_size, telegram_command, telegram_error = render_telegram_delivery_file(
+                input_file=output_file,
+                output_file=output_file.with_name(f"{output_file.stem}_telegram.mp4"),
+                duration=meta.duration,
+                config=config,
+                dry_run=dry_run,
+            )
+
             return make_plan(
                 index=index,
                 enabled=True,
@@ -1098,6 +1239,10 @@ def process_highlight(
                 asset_file=asset_file,
                 ffmpeg_filter=filter_complex,
                 ffmpeg_command=command_text,
+                telegram_file=telegram_file,
+                telegram_size=telegram_size,
+                telegram_command=telegram_command,
+                telegram_error=telegram_error,
                 dry_run=dry_run,
                 error=None,
             )
@@ -1151,6 +1296,14 @@ def process_highlight(
                 error=error,
             )
 
+        telegram_file, telegram_size, telegram_command, telegram_error = render_telegram_delivery_file(
+            input_file=output_file,
+            output_file=output_file.with_name(f"{output_file.stem}_telegram.mp4"),
+            duration=meta.duration,
+            config=config,
+            dry_run=dry_run,
+        )
+
         return make_plan(
             index=index,
             enabled=True,
@@ -1167,6 +1320,10 @@ def process_highlight(
             asset_file=None,
             ffmpeg_filter=vf,
             ffmpeg_command=command_text,
+            telegram_file=telegram_file,
+            telegram_size=telegram_size,
+            telegram_command=telegram_command,
+            telegram_error=telegram_error,
             dry_run=dry_run,
             error=None,
         )
@@ -1222,6 +1379,13 @@ def process_result_json(
         if plan.output_file and not plan.error and not dry_run:
             item["watermarked_file"] = plan.output_file
             item["final_video_file"] = plan.output_file
+            if plan.telegram_file:
+                item["telegram_video_file"] = plan.telegram_file
+                item["telegram_video_size"] = plan.telegram_size
+                item["telegram_delivery_profile"] = "telegram"
+                item.pop("telegram_delivery_error", None)
+            if plan.telegram_error:
+                item["telegram_delivery_error"] = plan.telegram_error
             item.pop("watermark_error", None)
         elif plan.error:
             item["watermark_error"] = plan.error
@@ -1254,6 +1418,7 @@ def process_result_json(
         "processed_count": len(plans),
         "success_count": success_count,
         "error_count": error_count,
+        "telegram_count": sum(1 for plan in plans if plan.get("telegram_file")),
         "watermark_plan_file": str(watermark_plan_path),
     }
 

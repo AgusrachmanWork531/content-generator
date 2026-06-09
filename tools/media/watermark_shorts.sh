@@ -145,23 +145,79 @@ parse_args() {
   done
 }
 
+create_minimal_result_json() {
+  local run_dir="$1"
+  local shorts_dir="$run_dir/shorts"
+  
+  # Use Python to create proper JSON (avoids bash quoting issues with leading zeros)
+  # Suppress stdout to avoid polluting log output
+  python3 - "$shorts_dir" "$run_dir" 2>/dev/null << 'PYEOF'
+import json
+import re
+import sys
+from pathlib import Path
+
+shorts_dir = Path(sys.argv[1])
+run_dir = Path(sys.argv[2])
+
+highlights = []
+for short_file in sorted(shorts_dir.glob("short_*.mp4")):
+    if not short_file.is_file():
+        continue
+    
+    # Extract clip index: short_01.mp4 -> 1 (as integer, not string with leading zero)
+    match = re.search(r'short_(\d+)', short_file.name)
+    clip_index = int(match.group(1)) if match else 0
+    
+    highlights.append({
+        "clip_index": clip_index,
+        "start": 0,
+        "end": 0,
+        "duration": 0
+    })
+
+result = {"highlights": highlights, "shorts": highlights}
+(run_dir / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))
+PYEOF
+}
+
 resolve_run_dir() {
   local value="$1"
   local candidate
 
+  # Try direct path first
   candidate="$(absolute_path "$value")"
-  if [ -d "$candidate" ] && [ -f "$candidate/result.json" ]; then
-    printf '%s\n' "$candidate"
-    return
+  if [ -d "$candidate" ]; then
+    if [ -f "$candidate/result.json" ]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+    # Check if shorts directory exists (render completed)
+    if [ -d "$candidate/shorts" ] && [ "$(ls -A "$candidate/shorts"/short_*.mp4 2>/dev/null)" ]; then
+      log "Creating result.json from shorts directory"
+      create_minimal_result_json "$candidate"
+      printf '%s\n' "$candidate"
+      return
+    fi
   fi
 
+  # Try OUTPUT_DIR/<video_id>
   candidate="$(absolute_path "$OUTPUT_DIR")/$value"
-  if [ -d "$candidate" ] && [ -f "$candidate/result.json" ]; then
-    printf '%s\n' "$candidate"
-    return
+  if [ -d "$candidate" ]; then
+    if [ -f "$candidate/result.json" ]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+    # Check if shorts directory exists (render completed)
+    if [ -d "$candidate/shorts" ] && [ "$(ls -A "$candidate/shorts"/short_*.mp4 2>/dev/null)" ]; then
+      log "Creating result.json from shorts directory"
+      create_minimal_result_json "$candidate"
+      printf '%s\n' "$candidate"
+      return
+    fi
   fi
 
-  die "Run directory/result.json not found for: $value"
+  die "Run directory not found for: $value"
 }
 
 main() {

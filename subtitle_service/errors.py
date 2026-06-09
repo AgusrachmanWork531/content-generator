@@ -12,6 +12,7 @@ Error codes:
 - SUBTITLE_OUTPUT_NOT_FOUND
 - BURN_FAILED
 - BURN_FAILED_LIBASS_NOT_AVAILABLE
+- NO_VISIBLE_SUBTITLE_EVENTS
 - UNKNOWN_SUBTITLE_ERROR
 """
 
@@ -183,3 +184,13 @@ class BurnLibassNotAvailableError(SubtitleError):
         )
         self.ffmpeg_version = ffmpeg_version
         self.ffmpeg_filters = ffmpeg_filters
+
+
+class NoVisibleSubtitleEventsError(SubtitleError):
+    """Selected transcript did not produce visible subtitle events."""
+
+    def __init__(self):
+        super().__init__(
+            message="selected_transcript did not produce any visible subtitle events",
+            error_code="NO_VISIBLE_SUBTITLE_EVENTS",
+        )
