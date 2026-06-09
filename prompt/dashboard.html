@@ -1179,6 +1179,12 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
+        function formatSeconds(secs) {
+            const m = Math.floor(secs / 60).toString().padStart(2, '0');
+            const s = Math.floor(secs % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
         async function pollJobStatus(jobId, onProgress) {
             while (true) {
                 const job = await fetchApi(`/jobs/${jobId}`);
@@ -1429,7 +1435,14 @@ ${transcript}
                 updateStepper("stepTranscript", "done");
                 
                 // Populate transcribe text
-                if (trCompleted.transcribe) {
+                if (trCompleted.transcribe_timeline && trCompleted.transcribe_timeline.segments) {
+                    const formatted = trCompleted.transcribe_timeline.segments.map(seg => {
+                        const start = formatSeconds(seg.start);
+                        const end = formatSeconds(seg.end);
+                        return `[${start} - ${end}] ${seg.text}`;
+                    }).join('\n');
+                    document.getElementById("transcriptText").textContent = formatted;
+                } else if (trCompleted.transcribe) {
                     document.getElementById("transcriptText").textContent = trCompleted.transcribe;
                 } else {
                     document.getElementById("transcriptText").textContent = "Transkripsi selesai namun tidak ada teks yang dikembalikan.";
