@@ -1167,6 +1167,20 @@
                         <!-- Dynamically filled with completed clips -->
                     </div>
                 </div>
+
+                <div class="font-settings-panel" id="consolePanel" style="margin-top: 18px; border-color: #222; background: #050505;">
+                    <div class="font-settings-header" style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <div class="font-settings-title" style="font-family: monospace; color: #00ff66;">&gt; Console Output</div>
+                            <div class="font-settings-desc">
+                                Live stdout/stderr logs of the current/last executed pipeline job.
+                            </div>
+                        </div>
+                        <button class="copy-btn" onclick="clearConsole()" style="border-color: #333; background: #111; height: 32px; border-radius: 8px; font-size: 11px;">Clear</button>
+                    </div>
+                    
+                    <div id="consoleOutput" style="font-family: monospace; font-size: 12px; color: #a5a5a5; line-height: 1.5; padding: 14px; border-radius: 16px; background: #000; border: 1px solid #111; max-height: 250px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">[system] Terminal initialized. Waiting for pipeline jobs...</div>
+                </div>
             </div>
         </div>
     </section>
@@ -1220,17 +1234,75 @@
             return `${m}:${s}`;
         }
 
+        function logToConsole(message, type = "info") {
+            const consoleBox = document.getElementById("consoleOutput");
+            if (!consoleBox) return;
+            const time = new Date().toLocaleTimeString();
+            let prefix = `[${time}] [INFO]`;
+            let color = "#a5a5a5";
+            
+            if (type === "error") {
+                prefix = `[${time}] [ERROR]`;
+                color = "#ff5a5a";
+            } else if (type === "system") {
+                prefix = `[${time}] [SYSTEM]`;
+                color = "#00ff66";
+            }
+            
+            const line = document.createElement("div");
+            line.style.color = color;
+            line.textContent = `${prefix} ${message}`;
+            consoleBox.appendChild(line);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function clearConsole() {
+            const consoleBox = document.getElementById("consoleOutput");
+            if (consoleBox) {
+                consoleBox.innerHTML = '<div style="color: #00ff66;">[system] Terminal cleared.</div>';
+            }
+        }
+
+        async function fetchAndPrintLogs(jobId) {
+            try {
+                const logs = await fetchApi(`/jobs/${jobId}/logs`);
+                if (logs.stdout) {
+                    logToConsole(`--- STDOUT logs for job ${jobId} ---`, "system");
+                    const lines = logs.stdout.split('\n');
+                    lines.forEach(line => {
+                        if (line.trim()) logToConsole(line, "info");
+                    });
+                }
+                if (logs.stderr) {
+                    logToConsole(`--- STDERR logs for job ${jobId} ---`, "system");
+                    const lines = logs.stderr.split('\n');
+                    lines.forEach(line => {
+                        if (line.trim()) logToConsole(line, "error");
+                    });
+                }
+            } catch (err) {
+                logToConsole(`Gagal mengambil log untuk pekerjaan ${jobId}: ${err.message}`, "error");
+            }
+        }
+
         async function pollJobStatus(jobId, onProgress) {
+            logToConsole(`Monitoring job ${jobId}...`, "system");
             while (true) {
                 const job = await fetchApi(`/jobs/${jobId}`);
                 if (onProgress) {
                     onProgress(job);
                 }
                 
+                logToConsole(`Job ${jobId} status: ${job.status}`, "info");
+                
                 if (job.status === "completed") {
+                    logToConsole(`Job ${jobId} completed successfully!`, "system");
+                    await fetchAndPrintLogs(jobId);
                     return job;
                 }
                 if (job.status === "failed") {
+                    logToConsole(`Job ${jobId} failed: ${job.error || 'Unknown error'}`, "error");
+                    await fetchAndPrintLogs(jobId);
                     throw new Error(job.error || "Job failed");
                 }
                 await sleep(2000);

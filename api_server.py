@@ -2091,6 +2091,37 @@ async def create_watermark_job(
     )
 
 
+@app.get("/jobs/{job_id}/logs")
+async def get_job_logs(
+    job_id: str,
+    token: str = Depends(verify_token)
+):
+    """Retrieve stdout and stderr logs for a job."""
+    stdout_file = API_JOBS_DIR / f"{job_id}.stdout.log"
+    stderr_file = API_JOBS_DIR / f"{job_id}.stderr.log"
+    
+    stdout_content = ""
+    stderr_content = ""
+    
+    if stdout_file.exists():
+        try:
+            stdout_content = stdout_file.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+            
+    if stderr_file.exists():
+        try:
+            stderr_content = stderr_file.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+            
+    return {
+        "job_id": job_id,
+        "stdout": stdout_content,
+        "stderr": stderr_content
+    }
+
+
 @app.get("/jobs/{job_id}")
 async def get_job_status(
     job_id: str,
