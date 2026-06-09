@@ -19,6 +19,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status, UploadFile, File
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Import subtitle service
@@ -30,6 +31,15 @@ app = FastAPI(
     title="Content Short API",
     description="Async API for content-short CLI pipeline",
     version="1.0.0"
+)
+
+# CORS middleware to allow browser requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include subtitle router if enabled
@@ -2370,6 +2380,15 @@ async def download_transcript_file(
         media_type=media_type,
         filename=filename,
     )
+
+
+@app.get("/dashboard", response_class=FileResponse)
+async def serve_dashboard():
+    """Serve the dashboard UI."""
+    dashboard_path = APP_DIR / "prompt" / "dashboard.html"
+    if not dashboard_path.exists():
+        raise HTTPException(status_code=404, detail="Dashboard file not found")
+    return FileResponse(dashboard_path)
 
 
 @app.get("/")

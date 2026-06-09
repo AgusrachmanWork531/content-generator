@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>AI Video Clipping Tool</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #000;
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .hero {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            text-align: center;
+            padding: 17px 24px 48px;
+            background: #000;
+        }
+
+        .hero-content {
+            width: 100%;
+            max-width: 1240px;
+        }
+
+        .eyebrow {
+            font-size: 20px;
+            line-height: 1;
+            font-weight: 800;
+            color: #f3f3f3;
+            margin-bottom: 15px;
+        }
+
+        .hero-title {
+            font-size: clamp(42px, 4vw, 60px);
+            line-height: 1.05;
+            font-weight: 800;
+            letter-spacing: -2px;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+
+        .hero-subtitle {
+            font-size: 20px;
+            line-height: 1.4;
+            color: #8e8e8e;
+            margin-bottom: 50px;
+        }
+
+        .action-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 48px;
+        }
+
+        .url-box {
+            width: 455px;
+            height: 69px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #2d2d2d;
+            border-radius: 999px;
+            padding: 6px 7px 6px 22px;
+        }
+
+        .input-placeholder {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #9b9b9b;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+
+        .link-icon {
+            width: 17px;
+            height: 17px;
+            opacity: 0.8;
+        }
+
+        .primary-btn {
+            height: 56px;
+            min-width: 166px;
+            border: none;
+            border-radius: 999px;
+            background: #f7f7f7;
+            color: #000;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .secondary-btn {
+            height: 69px;
+            padding: 0 26px;
+            border-radius: 999px;
+            border: 1px solid #242424;
+            background: transparent;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .divider-text {
+            font-size: 16px;
+            color: #f1f1f1;
+        }
+
+        .primary-btn:hover,
+        .secondary-btn:hover,
+        .copy-btn:hover,
+        .prompt-btn:hover,
+        .render-btn:hover {
+            opacity: 0.88;
+        }
+
+        .process-wrapper {
+            width: 100%;
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 24px 28px 28px;
+            border: 1px solid #171717;
+            border-radius: 30px;
+            background:
+                radial-gradient(circle at top center, rgba(255, 255, 255, 0.08), transparent 34%),
+                #070707;
+            text-align: left;
+        }
+
+        .process-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 26px;
+        }
+
+        .process-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .process-badge {
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: #111;
+            border: 1px solid #242424;
+            color: #9b9b9b;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .stepper {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .stepper::before {
+            content: "";
+            position: absolute;
+            top: 23px;
+            left: 8%;
+            right: 8%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #2a2a2a, transparent);
+            z-index: 0;
+        }
+
+        .step-item {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .step-number {
+            width: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #101010;
+            border: 1px solid #2b2b2b;
+            color: #777;
+            font-size: 15px;
+            font-weight: 800;
+            box-shadow: 0 0 0 7px #070707;
+        }
+
+        .step-label {
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            font-size: 14px;
+            line-height: 1.3;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .step-item.done .step-number {
+            background: #f7f7f7;
+            color: #000;
+            border-color: #f7f7f7;
+        }
+
+        .step-item.done .step-label {
+            color: #fff;
+        }
+
+        @keyframes pulseBorder {
+            0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.4); }
+            100% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+        }
+        @keyframes pulseHold {
+            0% { box-shadow: 0 0 0 0px rgba(255, 204, 102, 0.3); }
+            100% { box-shadow: 0 0 0 10px rgba(255, 204, 102, 0); }
+        }
+        .step-item.active .step-number {
+            background: #191919;
+            color: #fff;
+            border-color: #fff;
+            animation: pulseBorder 1.5s infinite;
+        }
+
+        .step-item.active .step-label {
+            color: #fff;
+        }
+
+        .step-item.hold .step-number {
+            background: #111;
+            color: #ffcc66;
+            border-color: rgba(255, 204, 102, 0.45);
+            animation: pulseHold 2s infinite;
+        }
+
+        .step-item.hold .step-label {
+            color: #ffcc66;
+        }
+
+        .review-panel {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 18px;
+            padding-top: 24px;
+            border-top: 1px solid #191919;
+        }
+
+        .transcript-card,
+        .metadata-card {
+            border: 1px solid #1f1f1f;
+            border-radius: 24px;
+            background: #0d0d0d;
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px 20px;
+            border-bottom: 1px solid #1c1c1c;
+        }
+
+        .card-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .card-desc {
+            font-size: 13px;
+            color: #8b8b8b;
+            line-height: 1.45;
+        }
+
+        .card-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .copy-btn {
+            height: 34px;
+            padding: 0 14px;
+            border: 1px solid #2b2b2b;
+            border-radius: 999px;
+            background: #151515;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .prompt-btn {
+            height: 34px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 999px;
+            background: #f7f7f7;
+            color: #000;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .status-pill {
+            flex-shrink: 0;
+            padding: 7px 11px;
+            border-radius: 999px;
+            background: rgba(255, 204, 102, 0.08);
+            border: 1px solid rgba(255, 204, 102, 0.22);
+            color: #ffcc66;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .status-pill.ready {
+            background: rgba(120, 255, 170, 0.08);
+            border-color: rgba(120, 255, 170, 0.22);
+            color: #8dffb7;
+        }
+
+        .transcript-body,
+        .metadata-body {
+            padding: 18px 20px 20px;
+        }
+
+        .transcript-box {
+            max-height: 320px;
+            overflow: auto;
+            padding: 16px;
+            border-radius: 18px;
+            background: #050505;
+            border: 1px solid #191919;
+            color: #bdbdbd;
+            font-size: 14px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+        }
+
+        .transcript-box::-webkit-scrollbar,
+        .metadata-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .transcript-box::-webkit-scrollbar-thumb,
+        .metadata-list::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 99px;
+        }
+
+        .upload-zone {
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            border: 1px dashed #333;
+            border-radius: 20px;
+            background:
+                radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 35%),
+                #070707;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .upload-zone:hover {
+            border-color: #555;
+            background: #0b0b0b;
+        }
+
+        .upload-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-icon {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            background: #151515;
+            border: 1px solid #282828;
+            color: #fff;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .upload-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #fff;
+            word-break: break-word;
+        }
+
+        .upload-text {
+            max-width: 300px;
+            font-size: 13px;
+            line-height: 1.45;
+            color: #8b8b8b;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .metadata-list {
+            display: none;
+            max-height: 210px;
+            overflow: auto;
+            margin-top: 14px;
+            padding: 10px;
+            border-radius: 18px;
+            border: 1px solid #1f1f1f;
+            background: #070707;
+        }
+
+        .metadata-list.show {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+
+        .metadata-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 11px 12px;
+            border-radius: 14px;
+            background: #101010;
+            border: 1px solid #202020;
+        }
+
+        .metadata-file-name {
+            color: #d4d4d4;
+            font-size: 13px;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .metadata-file-size {
+            margin-top: 4px;
+            color: #777;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .queue-status {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #1b1b1b;
+            border: 1px solid #2a2a2a;
+            color: #8b8b8b;
+            font-size: 11px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .queue-status.waiting {
+            color: #aaa;
+        }
+
+        .queue-status.rendering {
+            background: rgba(255, 204, 102, 0.08);
+            border-color: rgba(255, 204, 102, 0.22);
+            color: #ffcc66;
+        }
+
+        .queue-status.done {
+            background: rgba(120, 255, 170, 0.08);
+            border-color: rgba(120, 255, 170, 0.22);
+            color: #8dffb7;
+        }
+
+        .queue-status.failed {
+            background: rgba(255, 90, 90, 0.08);
+            border-color: rgba(255, 90, 90, 0.22);
+            color: #ff7d7d;
+        }
+
+        .meta-hint {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: #111;
+            border: 1px solid #1f1f1f;
+            color: #858585;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .meta-hint strong {
+            color: #bdbdbd;
+            font-weight: 700;
+        }
+
+        .hold-note {
+            margin-top: 14px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 13px 14px;
+            border-radius: 16px;
+            background: rgba(255, 204, 102, 0.06);
+            border: 1px solid rgba(255, 204, 102, 0.16);
+            color: #c9a75f;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .hold-dot {
+            width: 8px;
+            height: 8px;
+            flex-shrink: 0;
+            margin-top: 5px;
+            border-radius: 50%;
+            background: #ffcc66;
+            box-shadow: 0 0 12px rgba(255, 204, 102, 0.55);
+        }
+
+        .render-action {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .render-btn {
+            width: 100%;
+            height: 48px;
+            border: none;
+            border-radius: 999px;
+            background: #f7f7f7;
+            color: #000;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .render-btn:disabled {
+            cursor: not-allowed;
+            background: #242424;
+            color: #777;
+            opacity: 1;
+        }
+
+        .font-settings-panel {
+            margin-top: 18px;
+            padding: 20px;
+            border: 1px solid #1f1f1f;
+            border-radius: 24px;
+            background:
+                radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 34%),
+                #0d0d0d;
+        }
+
+        .font-settings-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .font-settings-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .font-settings-desc {
+            margin-top: 5px;
+            font-size: 13px;
+            color: #8b8b8b;
+            line-height: 1.45;
+        }
+
+        .font-settings-badge {
+            flex-shrink: 0;
+            padding: 7px 11px;
+            border-radius: 999px;
+            background: rgba(120, 255, 170, 0.08);
+            border: 1px solid rgba(120, 255, 170, 0.22);
+            color: #8dffb7;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .font-settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .font-setting-card {
+            padding: 16px;
+            border-radius: 20px;
+            background: #070707;
+            border: 1px solid #1f1f1f;
+        }
+
+        .font-label {
+            display: block;
+            margin-bottom: 10px;
+            color: #d7d7d7;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .font-select {
+            width: 100%;
+            height: 44px;
+            padding: 0 14px;
+            border-radius: 14px;
+            border: 1px solid #2a2a2a;
+            background: #111;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .font-select:focus {
+            border-color: #fff;
+        }
+
+        .font-preview {
+            margin-top: 14px;
+            min-height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+            border-radius: 16px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+                #050505;
+            border: 1px solid #191919;
+            text-align: center;
+        }
+
+        .subtitle-preview {
+            color: #fff;
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            text-shadow:
+                0 3px 0 #000,
+                0 0 16px rgba(255, 255, 255, 0.25);
+        }
+
+        .watermark-preview {
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 1.8px;
+        }
+
+        .font-config-note {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: #111;
+            border: 1px solid #1f1f1f;
+            color: #858585;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .font-config-note strong {
+            color: #cfcfcf;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            transform: translateX(-50%) translateY(20px);
+            padding: 12px 16px;
+            border-radius: 999px;
+            background: #f7f7f7;
+            color: #000;
+            font-size: 13px;
+            font-weight: 800;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.25s ease;
+            z-index: 99;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 980px) {
+            .review-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .stepper {
+                grid-template-columns: repeat(3, 1fr);
+                row-gap: 26px;
+            }
+
+            .stepper::before {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding-top: 40px;
+            }
+
+            .hero-title {
+                font-size: 42px;
+                letter-spacing: -1px;
+            }
+
+            .hero-subtitle {
+                font-size: 17px;
+                margin-bottom: 36px;
+            }
+
+            .action-row {
+                flex-direction: column;
+                gap: 14px;
+                margin-bottom: 36px;
+            }
+
+            .url-box {
+                width: 100%;
+                max-width: 455px;
+            }
+
+            .divider-text {
+                display: none;
+            }
+
+            .secondary-btn {
+                width: 100%;
+                max-width: 455px;
+            }
+
+            .process-wrapper {
+                padding: 22px 18px 24px;
+                border-radius: 24px;
+            }
+
+            .process-header,
+            .font-settings-header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .font-settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .font-settings-badge {
+                width: fit-content;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .stepper {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .step-label {
+                font-size: 13px;
+            }
+
+            .url-box {
+                height: auto;
+                flex-direction: column;
+                gap: 12px;
+                padding: 18px;
+                border-radius: 28px;
+            }
+
+            .primary-btn {
+                width: 100%;
+            }
+
+            .card-header {
+                flex-direction: column;
+            }
+
+            .card-actions {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .copy-btn,
+            .prompt-btn {
+                width: 100%;
+            }
+
+            .metadata-item {
+                grid-template-columns: 1fr;
+            }
+
+            .queue-status {
+                width: fit-content;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <section class="hero">
+        <div class="hero-content">
+            <div class="eyebrow">#1 AI VIDEO CLIPPING TOOL</div>
+
+            <h1 class="hero-title">
+                1 long video, 10 viral clips. Create 10x faster.
+            </h1>
+
+            <p class="hero-subtitle">
+                OpusClip turns long videos into shorts, and publishes them to all social platforms in one click.
+            </p>
+
+            <div class="action-row">
+                <div class="url-box" style="width: 550px;">
+                    <div class="input-placeholder" style="width: 100%; display: flex; align-items: center; gap: 10px;">
+                        <svg class="link-icon" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+                            <path d="M10.5 13.5L13.5 10.5" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                            <path d="M9.5 7.5H8.8C5.8 7.5 3.5 9.8 3.5 12.8C3.5 15.8 5.8 18.1 8.8 18.1H10.5"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M13.5 6H15.2C18.2 6 20.5 8.3 20.5 11.3C20.5 14.3 18.2 16.6 15.2 16.6H14.5"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                        <input type="text" id="videoUrlInput" placeholder="Drop a YouTube link (e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ)" style="background: transparent; border: none; color: #fff; outline: none; width: 100%; font-size: 15px; font-weight: 500;" />
+                    </div>
+
+                    <button class="primary-btn" id="submitUrlBtn">Get free clips</button>
+                </div>
+
+                <span class="divider-text">or</span>
+
+                <button class="secondary-btn" onclick="document.getElementById('videoFileInput').click()">Upload files</button>
+                <input type="file" id="videoFileInput" accept="video/*" style="display: none;" />
+            </div>
+
+            <div class="process-wrapper">
+                <div class="process-header">
+                    <div class="process-title">Video Processing Pipeline</div>
+                    <div class="process-badge" id="processBadge">Waiting URL Submission</div>
+                </div>
+
+                <div class="stepper">
+                    <div class="step-item" id="stepDownload">
+                        <div class="step-number">01</div>
+                        <div class="step-label">Download</div>
+                    </div>
+
+                    <div class="step-item" id="stepTranscript">
+                        <div class="step-number">02</div>
+                        <div class="step-label">Extract Transcribe</div>
+                    </div>
+
+                    <div class="step-item hold" id="renderStep">
+                        <div class="step-number" id="renderStepNumber">⏸</div>
+                        <div class="step-label">Render Video</div>
+                    </div>
+
+                    <div class="step-item" id="stepSubtitle">
+                        <div class="step-number">04</div>
+                        <div class="step-label">Generate Subtitle</div>
+                    </div>
+
+                    <div class="step-item" id="stepWatermark">
+                        <div class="step-number">05</div>
+                        <div class="step-label">Generate Watermark</div>
+                    </div>
+
+                    <div class="step-item" id="stepOpening">
+                        <div class="step-number">06</div>
+                        <div class="step-label">Generate Opening Narration</div>
+                    </div>
+                </div>
+
+                <div class="review-panel">
+                    <div class="transcript-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-title">Transcribe Extracted</div>
+                                <div class="card-desc">
+                                    Review hasil transcribe, copy transcript, atau copy prompt AI untuk generate
+                                    metadata clip.
+                                </div>
+                            </div>
+
+                            <div class="card-actions">
+                                <button class="copy-btn" onclick="copyTranscript()">Copy Transcript</button>
+                                <button class="prompt-btn" onclick="copyAIPrompt()">Copy AI Prompt</button>
+                            </div>
+                        </div>
+
+                        <div class="transcript-body">
+                            <div class="transcript-box" id="transcriptText">[00:00 - 00:04] Hari ini kita akan bahas
+                                kenapa video pendek bisa naik cepat.
+                                [00:04 - 00:09] Tapi masalahnya bukan cuma upload, melainkan pemilihan momen.
+                                [00:09 - 00:15] Kalau hook-nya lemah, algoritma belum sempat ngerti video kita.
+                                [00:15 - 00:21] Jadi bagian awal harus langsung bikin orang berhenti scroll.
+                                [00:21 - 00:28] Setelah itu baru masuk ke konflik, punchline, atau informasi yang bikin
+                                penasaran.
+                                [00:28 - 00:35] Nah dari transcribe ini, metadata clip bisa dibuat untuk menentukan
+                                start, end, hook, title, dan caption.</div>
+                        </div>
+                    </div>
+
+                    <div class="metadata-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-title">Upload Metadata Clip</div>
+                                <div class="card-desc">
+                                    Upload multiple metadata JSON. Render akan diproses satu per satu secara
+                                    synchronous.
+                                </div>
+                            </div>
+
+                            <div class="status-pill" id="metadataStatus">Step 03 Hold</div>
+                        </div>
+
+                        <div class="metadata-body">
+                            <label class="upload-zone" for="metadataFile">
+                                <input class="file-input" type="file" id="metadataFile" accept=".json" multiple />
+
+                                <div class="upload-content">
+                                    <div class="upload-icon" id="uploadIcon">↑</div>
+                                    <div class="upload-title" id="uploadTitle">Upload metadata JSON</div>
+                                    <div class="upload-text" id="uploadText">
+                                        Pilih satu atau beberapa file metadata clip. Setiap metadata akan dirender
+                                        secara berurutan.
+                                    </div>
+                                </div>
+                            </label>
+
+                            <div class="metadata-list" id="metadataList"></div>
+
+                            <div class="meta-hint">
+                                Format disarankan: <br />
+                                <strong>clip_index, start, end, duration, hook_3_5_seconds, selected_transcript,
+                                    youtube_metadata</strong>
+                            </div>
+
+                            <div class="hold-note" id="holdNote">
+                                <span class="hold-dot"></span>
+                                <span>
+                                    Render video belum dieksekusi. Sistem menunggu minimal satu metadata clip agar
+                                    proses render tidak nekat seperti deploy Jumat sore.
+                                </span>
+                            </div>
+
+                            <div class="render-action">
+                                <button class="render-btn" id="renderButton" disabled>
+                                    Render All Metadata
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="font-settings-panel">
+                    <div class="font-settings-header">
+                        <div>
+                            <div class="font-settings-title">Subtitle & Watermark Settings</div>
+                            <div class="font-settings-desc">
+                                Pilih jenis font sebelum proses generate subtitle dan watermark berjalan.
+                            </div>
+                        </div>
+
+                        <div class="font-settings-badge">Step 04 - 05 Config</div>
+                    </div>
+
+                    <div class="font-settings-grid">
+                        <div class="font-setting-card">
+                            <label class="font-label" for="subtitleFont">Subtitle Font</label>
+
+                            <select class="font-select" id="subtitleFont">
+                                <option value="Inter">Inter - Clean Modern</option>
+                                <option value="Poppins">Poppins - Rounded Viral</option>
+                                <option value="Montserrat">Montserrat - Bold Premium</option>
+                                <option value="Arial Black">Arial Black - Strong Caption</option>
+                                <option value="Impact">Impact - Meme Style</option>
+                                <option value="Bebas Neue">Bebas Neue - Shorts Style</option>
+                                <option value="Anton">Anton - Big Hook Text</option>
+                            </select>
+
+                            <div class="font-preview subtitle-preview" id="subtitlePreview">
+                                INI CONTOH SUBTITLE VIRAL
+                            </div>
+                        </div>
+
+                        <div class="font-setting-card">
+                            <label class="font-label" for="watermarkText">Watermark Text</label>
+                            <input type="text" id="watermarkText" value="@KilasanVideo" style="width: 100%; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 13px; outline: none; margin-bottom: 10px;" />
+
+                            <label class="font-label" for="watermarkFont">Watermark Font</label>
+                            <select class="font-select" id="watermarkFont">
+                                <option value="Inter">Inter - Clean Modern</option>
+                                <option value="Poppins">Poppins - Soft Branding</option>
+                                <option value="Montserrat">Montserrat - Premium Brand</option>
+                                <option value="Arial">Arial - Simple Safe</option>
+                                <option value="Arial Black">Arial Black - Strong Brand</option>
+                                <option value="Impact">Impact - Bold Stamp</option>
+                            </select>
+
+                            <div class="font-preview watermark-preview" id="watermarkPreview">
+                                @KilasanVideo
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="font-config-note">
+                        Font pilihan ini akan ikut dikirim bersama metadata render untuk proses
+                        <strong>generate subtitle</strong> dan <strong>generate watermark</strong>.
+                    </div>
+                </div>
+
+                <div class="font-settings-panel" id="openingPanel" style="margin-top: 18px; display: none;">
+                    <div class="font-settings-header">
+                        <div>
+                            <div class="font-settings-title">Opening Narration Settings</div>
+                            <div class="font-settings-desc">
+                                Prepend opening narration voiceover and static thumbnail to the final video.
+                            </div>
+                        </div>
+
+                        <div class="font-settings-badge" style="background: rgba(255, 204, 102, 0.08); border-color: rgba(255, 204, 102, 0.22); color: #ffcc66;">Step 06 config</div>
+                    </div>
+
+                    <div class="font-settings-grid">
+                        <div class="font-setting-card" style="grid-column: span 1;">
+                            <label class="font-label" for="openingStatement">Narration Statement</label>
+                            <textarea id="openingStatement" style="width: 100%; height: 90px; padding: 12px; border-radius: 14px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 13px; font-family: inherit; resize: none; outline: none; margin-bottom: 12px;" placeholder="Tulis kalimat pembuka narasi di sini (contoh: Rahasia video pendek viral ternyata ada di 3 detik pertama...)"></textarea>
+
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                <div>
+                                    <label class="font-label" for="openingVoice" style="font-size: 11px; margin-bottom: 4px;">Voice Actor</label>
+                                    <select class="font-select" id="openingVoice" style="height: 38px; border-radius: 10px;">
+                                        <option value="id-ID-GadisNeural">Gadis (Indonesian)</option>
+                                        <option value="id-ID-ArdiNeural">Ardi (Indonesian)</option>
+                                        <option value="en-US-JennyNeural">Jenny (English)</option>
+                                        <option value="en-US-GuyNeural">Guy (English)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="font-label" for="openingRate" style="font-size: 11px; margin-bottom: 4px;">Rate Speed</label>
+                                    <input type="text" id="openingRate" value="+10%" style="width: 100%; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 13px; outline: none;" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="font-setting-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <label class="font-label">Opening Audio & BGM</label>
+                                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                                    <div>
+                                        <label class="font-label" for="openingBgm" style="font-size: 11px; margin-bottom: 4px;">BGM Track Name (Optional)</label>
+                                        <input type="text" id="openingBgm" placeholder="e.g. assets/bgm/chill.mp3" style="width: 100%; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 12px; outline: none;" />
+                                    </div>
+                                    <div>
+                                        <label class="font-label" for="openingBgmVolume" style="font-size: 11px; margin-bottom: 4px;">BGM Volume (0.0 - 1.0)</label>
+                                        <input type="range" id="openingBgmVolume" min="0" max="1" step="0.05" value="0.30" style="width: 100%;" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button class="render-btn" id="generateOpeningBtn">
+                                Generate Opening Narration
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="font-settings-panel" id="resultsPanel" style="margin-top: 18px; border-color: #1a3c22; background: radial-gradient(circle at top right, rgba(120, 255, 170, 0.05), transparent 34%), #080f0a; display: none;">
+                    <div class="font-settings-header">
+                        <div>
+                            <div class="font-settings-title" style="color: #8dffb7;">Completed Shorts</div>
+                            <div class="font-settings-desc" style="color: #63a375;">
+                                Download your generated viral shorts.
+                            </div>
+                        </div>
+                        <div class="font-settings-badge" style="background: rgba(120, 255, 170, 0.08); border-color: rgba(120, 255, 170, 0.22); color: #8dffb7;">Success</div>
+                    </div>
+                    
+                    <div id="resultsList" style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+                        <!-- Dynamically filled with completed clips -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="toast" id="toast">Copied</div>
+
+    <script>
+        const API_BASE = window.location.protocol === "file:" ? "http://localhost:8088" : window.location.origin;
+        const API_TOKEN = "change-me"; // Default token in api_server.py
+        
+        let metadataQueue = [];
+        let isRendering = false;
+        let currentVideoUrl = "";
+        let lastRenderJobId = "";
+
+        async function fetchApi(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const headers = {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${API_TOKEN}`,
+                ...(options.headers || {})
+            };
+            
+            const res = await fetch(url, {
+                ...options,
+                headers
+            });
+            
+            if (!res.ok) {
+                let errText = await res.text();
+                try {
+                    const errJson = JSON.parse(errText);
+                    errText = errJson.detail || errText;
+                } catch(e) {}
+                throw new Error(errText);
+            }
+            return res.json();
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function pollJobStatus(jobId, onProgress) {
+            while (true) {
+                const job = await fetchApi(`/jobs/${jobId}`);
+                if (onProgress) {
+                    onProgress(job);
+                }
+                
+                if (job.status === "completed") {
+                    return job;
+                }
+                if (job.status === "failed") {
+                    throw new Error(job.error || "Job failed");
+                }
+                await sleep(2000);
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.classList.add("show");
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 1800);
+        }
+
+        function copyToClipboard(text, successMessage) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(successMessage);
+                });
+                return;
+            }
+
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.left = "-999px";
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+
+            try {
+                document.execCommand("copy");
+                showToast(successMessage);
+            } catch (error) {
+                showToast("Gagal copy");
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function copyTranscript() {
+            const transcript = document.getElementById("transcriptText").innerText;
+            copyToClipboard(transcript, "Transcribe berhasil dicopy");
+        }
+
+        function copyAIPrompt() {
+            const transcript = document.getElementById("transcriptText").innerText;
+
+            const prompt = `
+Tugas kamu adalah menganalisis transcribe video panjang dan memilih bagian terbaik untuk dijadikan video short viral.
+
+Buat output dalam format JSON valid saja, tanpa markdown, tanpa penjelasan tambahan.
+
+RULE:
+1. Pilih clip terbaik yang memiliki potensi viral paling tinggi.
+2. Clip harus bisa dipahami tanpa menonton video asli.
+3. Awal clip harus memiliki hook yang kuat.
+4. Jangan memotong konteks transcribe secara asal.
+5. Pastikan start dan end mengikuti timeline transcribe.
+6. Maksimal durasi clip 85 detik.
+7. Buat thumbnail_text minimal 4 kata yang membuat viewer penasaran.
+8. selected_transcript wajib berisi full transcribe sesuai range clip, jangan dikurangi dan jangan ditambah.
+9. Jika ada lebih dari 1 momen viral, buat output JSON array berisi beberapa metadata clip.
+10. Output harus langsung bisa digunakan sebagai metadata clip untuk proses render.
+
+OUTPUT JSON STRUCTURE:
+[
+  {
+    "clip_index": 1,
+    "viral_score": 0,
+    "clip_type": "",
+    "start": 0,
+    "end": 0,
+    "duration": 0,
+    "hook_3_5_seconds": {
+      "start": 0,
+      "end": 0,
+      "text": ""
+    },
+    "selected_transcript": [
+      {
+        "start": 0,
+        "end": 0,
+        "text": ""
+      }
+    ],
+    "youtube_metadata": {
+      "title": "",
+      "description": "",
+      "hashtags": [],
+      "thumbnail_text": ""
+    },
+    "editing_recommendation": {
+      "recommended_cut_style": [],
+      "sound_effect_suggestion": [],
+      "b_roll_or_zoom_suggestion": ""
+    }
+  }
+]
+
+TRANSCRIBE:
+${transcript}
+`.trim();
+
+            copyToClipboard(prompt, "AI Prompt + Transcribe berhasil dicopy");
+        }
+
+        const metadataFile = document.getElementById("metadataFile");
+        const renderButton = document.getElementById("renderButton");
+        const uploadTitle = document.getElementById("uploadTitle");
+        const uploadText = document.getElementById("uploadText");
+        const uploadIcon = document.getElementById("uploadIcon");
+        const metadataStatus = document.getElementById("metadataStatus");
+        const processBadge = document.getElementById("processBadge");
+        const holdNote = document.getElementById("holdNote");
+        const renderStep = document.getElementById("renderStep");
+        const renderStepNumber = document.getElementById("renderStepNumber");
+        const metadataList = document.getElementById("metadataList");
+
+        const subtitleFont = document.getElementById("subtitleFont");
+        const watermarkFont = document.getElementById("watermarkFont");
+        const watermarkText = document.getElementById("watermarkText");
+        const subtitlePreview = document.getElementById("subtitlePreview");
+        const watermarkPreview = document.getElementById("watermarkPreview");
+
+        const submitUrlBtn = document.getElementById("submitUrlBtn");
+        const videoUrlInput = document.getElementById("videoUrlInput");
+        const videoFileInput = document.getElementById("videoFileInput");
+
+        const openingPanel = document.getElementById("openingPanel");
+        const generateOpeningBtn = document.getElementById("generateOpeningBtn");
+        const resultsPanel = document.getElementById("resultsPanel");
+        const resultsList = document.getElementById("resultsList");
+
+        function updateFontPreview() {
+            subtitlePreview.style.fontFamily = `"${subtitleFont.value}", Arial, sans-serif`;
+            watermarkPreview.style.fontFamily = `"${watermarkFont.value}", Arial, sans-serif`;
+            watermarkPreview.textContent = watermarkText.value || "@KilasanVideo";
+        }
+
+        function getRenderFontConfig() {
+            return {
+                subtitle: {
+                    font_family: subtitleFont.value,
+                    font_size: 64,
+                    font_weight: 900,
+                    position: "bottom_center",
+                    style: "kinetic_popup"
+                },
+                watermark: {
+                    font_family: watermarkFont.value,
+                    font_size: 36,
+                    font_weight: 800,
+                    position: "center_15_top",
+                    opacity: 0.78
+                }
+            };
+        }
+
+        function updateStepper(stepId, state) {
+            const el = document.getElementById(stepId);
+            if (!el) return;
+            
+            el.classList.remove("active", "done", "hold");
+            
+            const numEl = el.querySelector(".step-number");
+            const stepNumText = stepId === "renderStep" ? "03" : stepId.replace("step", "").padStart(2, "0");
+            
+            if (state === "active") {
+                el.classList.add("active");
+                if (numEl) numEl.textContent = stepId === "renderStep" ? "03" : stepNumText;
+            } else if (state === "done") {
+                el.classList.add("done");
+                if (numEl) numEl.textContent = "✓";
+            } else if (state === "hold") {
+                el.classList.add("hold");
+                if (numEl) numEl.textContent = "⏸";
+            } else if (state === "failed") {
+                el.classList.add("hold");
+                if (numEl) numEl.textContent = "✗";
+            } else {
+                if (numEl) numEl.textContent = stepId === "renderStep" ? "⏸" : stepNumText;
+            }
+        }
+
+        subtitleFont.addEventListener("change", updateFontPreview);
+        watermarkFont.addEventListener("change", updateFontPreview);
+        watermarkText.addEventListener("input", updateFontPreview);
+
+        updateFontPreview();
+
+        // Submit YouTube URL Flow
+        async function handleUrlSubmission() {
+            const url = videoUrlInput.value.trim();
+            if (!url) {
+                showToast("URL YouTube wajib diisi");
+                return;
+            }
+            
+            currentVideoUrl = url;
+            submitUrlBtn.disabled = true;
+            submitUrlBtn.textContent = "Processing...";
+            
+            // Reset stepper states
+            updateStepper("stepDownload", "waiting");
+            updateStepper("stepTranscript", "waiting");
+            updateStepper("renderStep", "hold");
+            updateStepper("stepSubtitle", "waiting");
+            updateStepper("stepWatermark", "waiting");
+            updateStepper("stepOpening", "waiting");
+            
+            try {
+                // 1. Download
+                updateStepper("stepDownload", "active");
+                processBadge.textContent = "Downloading source video...";
+                const dlJob = await fetchApi("/jobs/steps/download", {
+                    method: "POST",
+                    body: JSON.stringify({ source: url })
+                });
+                
+                await pollJobStatus(dlJob.job_id, (job) => {
+                    processBadge.textContent = `Download: ${job.status}...`;
+                });
+                updateStepper("stepDownload", "done");
+                
+                // 2. Transcript
+                updateStepper("stepTranscript", "active");
+                processBadge.textContent = "Extracting transcription...";
+                const trJob = await fetchApi("/jobs/steps/transcript", {
+                    method: "POST",
+                    body: JSON.stringify({ source: url })
+                });
+                
+                const trCompleted = await pollJobStatus(trJob.job_id, (job) => {
+                    processBadge.textContent = `Transcribing: ${job.status}...`;
+                });
+                updateStepper("stepTranscript", "done");
+                
+                // Populate transcribe text
+                if (trCompleted.transcribe) {
+                    document.getElementById("transcriptText").textContent = trCompleted.transcribe;
+                } else {
+                    document.getElementById("transcriptText").textContent = "Transkripsi selesai namun tidak ada teks yang dikembalikan.";
+                }
+                
+                processBadge.textContent = "Waiting for Metadata Clip";
+                metadataStatus.textContent = "Ready to Upload";
+                metadataStatus.className = "status-pill ready";
+                showToast("Transcribe & Download selesai!");
+                
+            } catch (err) {
+                console.error(err);
+                processBadge.textContent = `Error: ${err.message}`;
+                showToast(`Gagal: ${err.message}`);
+                // Mark active step as failed
+                const activeStep = document.querySelector(".step-item.active");
+                if (activeStep) {
+                    updateStepper(activeStep.id, "failed");
+                }
+            } finally {
+                submitUrlBtn.disabled = false;
+                submitUrlBtn.textContent = "Get free clips";
+            }
+        }
+
+        submitUrlBtn.addEventListener("click", handleUrlSubmission);
+        videoUrlInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") handleUrlSubmission();
+        });
+
+        videoFileInput.addEventListener("change", () => {
+            showToast("Upload file video langsung sedang dalam pengembangan. Gunakan link YouTube.");
+        });
+
+        // Metadata JSON upload handler
+        metadataFile.addEventListener("change", function () {
+            const files = Array.from(this.files || []);
+
+            if (!files.length) return;
+
+            metadataQueue = files.map((file, index) => ({
+                id: `metadata-${Date.now()}-${index}`,
+                file,
+                status: "waiting"
+            }));
+
+            renderMetadataList();
+
+            uploadIcon.textContent = "✓";
+            uploadTitle.textContent = `${files.length} metadata selected`;
+            uploadText.textContent = "Metadata clip berhasil dipilih. Render akan berjalan satu per satu secara synchronous.";
+
+            metadataStatus.textContent = "Metadata Ready";
+            metadataStatus.classList.add("ready");
+
+            processBadge.textContent = "Ready to Render";
+
+            renderStep.classList.remove("hold");
+            renderStep.classList.add("active");
+            renderStepNumber.textContent = "03";
+
+            holdNote.innerHTML = `
+                <span class="hold-dot"></span>
+                <span>
+                  ${files.length} metadata clip sudah tersedia. Klik tombol render untuk memproses semua metadata secara berurutan.
+                </span>
+            `;
+
+            renderButton.disabled = false;
+            renderButton.textContent = `Render ${files.length} Metadata`;
+        });
+
+        function renderMetadataList() {
+            metadataList.innerHTML = "";
+
+            metadataQueue.forEach((item, index) => {
+                const fileSize = formatFileSize(item.file.size);
+
+                const row = document.createElement("div");
+                row.className = "metadata-item";
+                row.id = item.id;
+
+                row.innerHTML = `
+                    <div>
+                      <div class="metadata-file-name">${index + 1}. ${item.file.name}</div>
+                      <div class="metadata-file-size">${fileSize}</div>
+                    </div>
+                    <div class="queue-status ${item.status}" data-status-for="${item.id}">
+                      ${getStatusLabel(item.status)}
+                    </div>
+                `;
+
+                metadataList.appendChild(row);
+            });
+
+            metadataList.classList.toggle("show", metadataQueue.length > 0);
+        }
+
+        function updateQueueStatus(index, status) {
+            metadataQueue[index].status = status;
+
+            const statusEl = document.querySelector(`[data-status-for="${metadataQueue[index].id}"]`);
+
+            if (!statusEl) return;
+
+            statusEl.className = `queue-status ${status}`;
+            statusEl.textContent = getStatusLabel(status);
+        }
+
+        function getStatusLabel(status) {
+            const statusMap = {
+                waiting: "Waiting",
+                rendering: "Rendering",
+                done: "Done",
+                failed: "Failed"
+            };
+
+            return statusMap[status] || "Waiting";
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        async function renderSingleMetadata(item, index) {
+            if (!currentVideoUrl) {
+                throw new Error("Wajib submit URL YouTube terlebih dahulu");
+            }
+            
+            updateQueueStatus(index, "rendering");
+
+            processBadge.textContent = `Rendering ${index + 1}/${metadataQueue.length}...`;
+            renderButton.textContent = `Rendering ${index + 1}/${metadataQueue.length}...`;
+
+            const metadataPayload = await readJSONFile(item.file);
+
+            const finalRenderPayload = {
+                ...metadataPayload,
+                render_options: {
+                    ...(metadataPayload.render_options || {}),
+                    fonts: getRenderFontConfig()
+                }
+            };
+
+            // 1. Render Video (Step 3)
+            updateStepper("renderStep", "active");
+            const renderJob = await fetchApi("/jobs/steps/render", {
+                method: "POST",
+                body: JSON.stringify({
+                    source: currentVideoUrl,
+                    render_payload: finalRenderPayload
+                })
+            });
+            
+            await pollJobStatus(renderJob.job_id, (job) => {
+                processBadge.textContent = `Rendering clip ${index + 1}: ${job.status}...`;
+            });
+            updateStepper("renderStep", "done");
+            updateStepper("stepSubtitle", "done"); // Subtitle automatically generated on render
+            
+            // 2. Generate Watermark (Step 5)
+            updateStepper("stepWatermark", "active");
+            processBadge.textContent = `Applying watermark for clip ${index + 1}...`;
+            
+            const watermarkJob = await fetchApi("/jobs/steps/watermark", {
+                method: "POST",
+                body: JSON.stringify({
+                    source: currentVideoUrl,
+                    watermark_text: watermarkText.value || "@KilasanVideo",
+                    watermark_mode: "text",
+                    watermark_position: "center_15_top"
+                })
+            });
+            
+            await pollJobStatus(watermarkJob.job_id, (job) => {
+                processBadge.textContent = `Watermarking: ${job.status}...`;
+            });
+            
+            updateStepper("stepWatermark", "done");
+            updateQueueStatus(index, "done");
+            
+            // Track last job ID to fetch files
+            lastRenderJobId = watermarkJob.job_id;
+        }
+
+        async function renderAllMetadataSynchronously() {
+            if (!metadataQueue.length || isRendering) return;
+            if (!currentVideoUrl) {
+                showToast("URL YouTube belum disubmit!");
+                return;
+            }
+
+            isRendering = true;
+            renderButton.disabled = true;
+
+            showToast("Render queue started");
+
+            let hasErrors = false;
+            for (let i = 0; i < metadataQueue.length; i++) {
+                try {
+                    await renderSingleMetadata(metadataQueue[i], i);
+                } catch (error) {
+                    console.error(error);
+                    updateQueueStatus(i, "failed");
+                    hasErrors = true;
+                }
+            }
+
+            isRendering = false;
+
+            if (hasErrors) {
+                processBadge.textContent = "Render Completed with Errors";
+                renderButton.textContent = "Render Failed";
+                showToast("Beberapa render metadata gagal.");
+            } else {
+                processBadge.textContent = "Render Queue Completed";
+                renderButton.textContent = "Render Completed";
+                showToast("Semua metadata selesai dirender!");
+                
+                // Show Step 6 Opening Narration settings panel
+                openingPanel.style.display = "block";
+                openingPanel.scrollIntoView({ behavior: "smooth" });
+                updateStepper("stepOpening", "active");
+            }
+        }
+
+        // Step 6 Opening Narration Execution
+        generateOpeningBtn.addEventListener("click", async () => {
+            const statement = document.getElementById("openingStatement").value.trim();
+            if (!statement) {
+                showToast("Narration statement wajib diisi!");
+                return;
+            }
+            
+            const voice = document.getElementById("openingVoice").value;
+            const rate = document.getElementById("openingRate").value.trim();
+            const bgm = document.getElementById("openingBgm").value.trim();
+            const bgmVolume = parseFloat(document.getElementById("openingBgmVolume").value);
+            
+            generateOpeningBtn.disabled = true;
+            generateOpeningBtn.textContent = "Generating...";
+            
+            try {
+                updateStepper("stepOpening", "active");
+                processBadge.textContent = "Generating opening narration...";
+                
+                const openingJob = await fetchApi("/jobs/steps/opening", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        source: currentVideoUrl,
+                        opening_statement: statement,
+                        opening_voice: voice,
+                        opening_rate: rate,
+                        opening_bgm: bgm || undefined,
+                        opening_bgm_volume: bgmVolume
+                    })
+                });
+                
+                const opCompleted = await pollJobStatus(openingJob.job_id, (job) => {
+                    processBadge.textContent = `Opening voiceover: ${job.status}...`;
+                });
+                
+                updateStepper("stepOpening", "done");
+                processBadge.textContent = "Pipeline completed successfully!";
+                showToast("Opening Narration berhasil ditambahkan!");
+                
+                // Fetch final results from opening job
+                const result = await fetchApi(`/jobs/${openingJob.job_id}/result`);
+                renderCompletedClips(result.files);
+                
+            } catch (err) {
+                console.error(err);
+                processBadge.textContent = `Opening voiceover failed: ${err.message}`;
+                showToast(`Gagal: ${err.message}`);
+                updateStepper("stepOpening", "failed");
+            } finally {
+                generateOpeningBtn.disabled = false;
+                generateOpeningBtn.textContent = "Generate Opening Narration";
+            }
+        });
+
+        function renderCompletedClips(files) {
+            resultsList.innerHTML = "";
+            
+            if (!files || files.length === 0) {
+                resultsList.innerHTML = `<div style="color: #8b8b8b; font-size: 13px; text-align: center; padding: 12px;">No output files found.</div>`;
+            } else {
+                files.forEach(file => {
+                    const row = document.createElement("div");
+                    row.className = "metadata-item";
+                    row.style.background = "#0e1610";
+                    row.style.borderColor = "#1c3c24";
+                    
+                    row.innerHTML = `
+                        <div>
+                            <div class="metadata-file-name" style="color: #a4e6b5;">${file.filename}</div>
+                            <div class="metadata-file-size" style="color: #639371;">Ready for distribution</div>
+                        </div>
+                        <a href="${API_BASE}${file.url}" target="_blank" class="primary-btn" style="height: 34px; min-width: 90px; font-size: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; background: #8dffb7; color: #000; border-radius: 999px;">Download</a>
+                    `;
+                    resultsList.appendChild(row);
+                });
+            }
+            resultsPanel.style.display = "block";
+            resultsPanel.scrollIntoView({ behavior: "smooth" });
+        }
+
+        function readJSONFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = function () {
+                    try {
+                        const json = JSON.parse(reader.result);
+                        resolve(json);
+                    } catch (error) {
+                        reject(new Error(`${file.name} bukan JSON valid`));
+                    }
+                };
+
+                reader.onerror = function () {
+                    reject(new Error(`Gagal membaca file ${file.name}`));
+                };
+
+                reader.readAsText(file);
+            });
+        }
+
+        renderButton.addEventListener("click", renderAllMetadataSynchronously);
+    </script>
+</body>
+
+</html>
