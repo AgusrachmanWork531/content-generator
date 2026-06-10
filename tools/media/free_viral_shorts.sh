@@ -55,6 +55,7 @@ OPENING_BGM_VOLUME=""
 OPENING_REVIEW_GATE=0
 OPENING_BGM_REVIEW_GATE=0
 TRANSCRIPT_REVIEW_GATE=0
+SUBTITLE_FONT_NAME=""
 SOURCES=()
 
 log() {
@@ -355,7 +356,12 @@ parse_args() {
       --opening-review-gate|--opening-bgm-review-gate|--transcript-review-gate)
         shift
         ;;
-      --opening-voice|--opening-rate|--opening-pitch|--subtitle-font-name)
+      --subtitle-font-name)
+        [ "$#" -ge 2 ] || die "Missing value for $1"
+        SUBTITLE_FONT_NAME="$2"
+        shift 2
+        ;;
+      --opening-voice|--opening-rate|--opening-pitch)
         [ "$#" -ge 2 ] || die "Missing value for $1"
         shift 2
         ;;
@@ -1214,8 +1220,50 @@ if [ "$SKIP_RENDER" = "0" ]; then
     write_loading_state "$run_dir" "$video_id" "running" 4 "$total_steps" "Rendering shorts" "Cropping without subtitle (fast)"
     render_shorts "$result_json" "$video_file" "$run_dir"
     
-# Subtitle generation removed - skipping ASS subtitle generation
-    log "Shorts ready: $run_dir/shorts (subtitle generation disabled)"
+    # Re-enabled subtitle generation loop
+    local idx=1
+    local first_lang="${LANGUAGES%%,*}"
+    [ -n "$first_lang" ] || first_lang="id"
+    
+    local ffmpeg_bin
+    ffmpeg_bin="$(choose_ffmpeg)"
+    local ffmpeg_dir
+    ffmpeg_dir="$(dirname "$ffmpeg_bin")"
+    
+    while true; do
+      local formatted_idx
+      formatted_idx="$(printf "%02d" "$idx")"
+      local clip_file="$run_dir/shorts/short_${formatted_idx}.mp4"
+      if [ ! -f "$clip_file" ]; then
+        break
+      fi
+      
+      write_loading_state "$run_dir" "$video_id" "running" 5 "$total_steps" "Generating subtitles" "Transcribing short ${formatted_idx}"
+      
+      local sub_python
+      sub_python="$(choose_cv_python)"
+      
+      if [ -n "$SUBTITLE_FONT_NAME" ]; then
+        PATH="$ffmpeg_dir:$PATH" "$sub_python" "$REPO_ROOT/scripts/generate_subtitle.py" \
+          --video "$clip_file" \
+          --language "$first_lang" \
+          --engine "auto-captions" \
+          --burn true \
+          --replace-original \
+          --style "$SUBTITLE_FONT_NAME"
+      else
+        PATH="$ffmpeg_dir:$PATH" "$sub_python" "$REPO_ROOT/scripts/generate_subtitle.py" \
+          --video "$clip_file" \
+          --language "$first_lang" \
+          --engine "auto-captions" \
+          --burn true \
+          --replace-original
+      fi
+      
+      idx=$((idx + 1))
+    done
+    
+    log "Shorts ready: $run_dir/shorts"
   fi
 
   if [ "${DEFER_COMPLETED_STATE:-0}" != "1" ]; then

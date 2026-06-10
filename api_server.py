@@ -221,6 +221,70 @@ def save_job_process_logs(job_id: str, stdout, stderr) -> dict:
     return log_paths
 
 
+class ProcessResult:
+    def __init__(self, returncode: int, stdout_file: Path, stderr_file: Path):
+        self.returncode = returncode
+        self.stdout_file = stdout_file
+        self.stderr_file = stderr_file
+
+    @property
+    def stdout(self) -> str:
+        if self.stdout_file.exists():
+            try:
+                return self.stdout_file.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+        return ""
+
+    @property
+    def stderr(self) -> str:
+        if self.stderr_file.exists():
+            try:
+                return self.stderr_file.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+        return ""
+
+
+def run_process_redirect_logs(cmd: list[str], cwd: str, job_id: str, timeout: int = 7200) -> ProcessResult:
+    stdout_file = API_JOBS_DIR / f"{job_id}.stdout.log"
+    stderr_file = API_JOBS_DIR / f"{job_id}.stderr.log"
+    
+    stdout_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Touch files first so they exist and are empty
+    stdout_file.write_text("", encoding="utf-8")
+    stderr_file.write_text("", encoding="utf-8")
+    
+    with open(stdout_file, "w", encoding="utf-8") as out_f, \
+         open(stderr_file, "w", encoding="utf-8") as err_f:
+        
+        process = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            stdout=out_f,
+            stderr=err_f,
+            text=True
+        )
+        
+        try:
+            returncode = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            returncode = process.wait()
+            raise subprocess.TimeoutExpired(
+                cmd,
+                timeout,
+                stdout=stdout_file.read_text(errors="replace") if stdout_file.exists() else "",
+                stderr=stderr_file.read_text(errors="replace") if stderr_file.exists() else ""
+            )
+            
+    return ProcessResult(returncode, stdout_file, stderr_file)
+
+
+
+
+
 def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
     """Verify Bearer token. Returns 401 if missing or invalid."""
     if credentials is None or not credentials.credentials:
@@ -366,16 +430,69 @@ def validate_opening_result(run_dir: Path) -> tuple[bool, Optional[str]]:
 
 
 
-def _log_fallback(msg: str) -> None:
-    """Print a timestamped fallback log line."""
+def _log_fallback(msg: str, job_id: Optional[str] = None) -> None:
+    """Print a timestamped fallback log line and optionally write to job log."""
     ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
-    print(f"[audio-fallback {ts}] {msg}", flush=True)
+    log_line = f"[audio-fallback {ts}] {msg}"
+    print(log_line, flush=True)
+    if job_id:
+        try:
+            log_file = API_JOBS_DIR / f"{job_id}.stdout.log"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(log_line + "\n")
+        except Exception:
+            pass
+
+
+def cleanup_assets_on_transcript_missing(video_id: str, job_id: str) -> bool:
+    """
+    Check if transcript.clean.json exists. If it does not exist,
+    delete downloaded source video files and any directories for this video_id.
+    """
+    clean_transcript = TRANSCRIPT_DIR / video_id / "transcript.clean.json"
+    if not clean_transcript.exists():
+        _log_fallback(f"YouTube transcript not found for {video_id}. Cleaning up downloaded assets...", job_id)
+        
+        # 1. Delete source video files in storage/videos/
+        deleted_any_video = False
+        try:
+            for source_file in VIDEO_DIR.glob(f"*{video_id}*"):
+                if source_file.is_file():
+                    source_file.unlink()
+                    _log_fallback(f"Deleted source video file: {source_file.name}", job_id)
+                    deleted_any_video = True
+            if not deleted_any_video:
+                _log_fallback("No local source video files found to delete.", job_id)
+        except Exception as e:
+            _log_fallback(f"Error deleting source video: {e}", job_id)
+
+        # 2. Delete transcript directory
+        try:
+            transcript_path = TRANSCRIPT_DIR / video_id
+            if transcript_path.exists() and transcript_path.is_dir():
+                shutil.rmtree(transcript_path)
+                _log_fallback(f"Deleted transcript directory: {transcript_path}", job_id)
+        except Exception as e:
+            _log_fallback(f"Error deleting transcript directory: {e}", job_id)
+
+        # 3. Delete output directory
+        try:
+            output_path = OUTPUT_DIR / video_id
+            if output_path.exists() and output_path.is_dir():
+                shutil.rmtree(output_path)
+                _log_fallback(f"Deleted output directory: {output_path}", job_id)
+        except Exception as e:
+            _log_fallback(f"Error deleting output directory: {e}", job_id)
+        return True
+    return False
 
 
 def run_audio_fallback_transcription(
     video_id: str,
     video_path: Path,
     language: str = "id",
+    job_id: Optional[str] = None,
 ) -> Path:
     """Run audio fallback transcription using Whisper.
 
@@ -383,6 +500,7 @@ def run_audio_fallback_transcription(
         video_id: The YouTube video ID
         video_path: Path to the downloaded video file
         language: Language code for transcription (e.g., "id", "en")
+        job_id: Optional Job ID to write progress logs
 
     Returns:
         Path to the word_timestamps.json file
@@ -418,12 +536,22 @@ def run_audio_fallback_transcription(
             cmd[cmd.index("-l") + 1] = first_lang
 
     video_size_mb = video_path.stat().st_size / (1024 * 1024)
-    _log_fallback(f"Starting Whisper transcription for {video_id}")
-    _log_fallback(f"  Video: {video_path.name} ({video_size_mb:.1f} MB)")
-    _log_fallback(f"  Language: {language}, Model: medium, Preset: accurate")
-    _log_fallback(f"  Command: {' '.join(cmd)}")
+    _log_fallback(f"Starting Whisper transcription for {video_id}", job_id)
+    _log_fallback(f"  Video: {video_path.name} ({video_size_mb:.1f} MB)", job_id)
+    _log_fallback(f"  Language: {language}, Model: medium, Preset: accurate", job_id)
+    _log_fallback(f"  Command: {' '.join(cmd)}", job_id)
 
     t0 = time.monotonic()
+
+    # Open job stdout file in append mode if job_id is provided
+    job_log_file = None
+    if job_id:
+        try:
+            job_log_file_path = API_JOBS_DIR / f"{job_id}.stdout.log"
+            job_log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            job_log_file = open(job_log_file_path, "a", encoding="utf-8")
+        except Exception:
+            pass
 
     try:
         # Use Popen to stream output in real-time
@@ -442,25 +570,37 @@ def run_audio_fallback_transcription(
             output_lines.append(line)
             # Forward all caption_generator output to server logs
             print(f"  [whisper] {line}", flush=True)
+            if job_log_file:
+                try:
+                    job_log_file.write(line + "\n")
+                    job_log_file.flush()
+                except Exception:
+                    pass
+
+        if job_log_file:
+            try:
+                job_log_file.close()
+            except Exception:
+                pass
 
         process.wait(timeout=1800)  # 30 minute timeout for wait
         elapsed = time.monotonic() - t0
         combined_output = "\n".join(output_lines)
 
         if process.returncode != 0:
-            _log_fallback(f"Whisper process FAILED (exit={process.returncode}) after {elapsed:.1f}s")
+            _log_fallback(f"Whisper process FAILED (exit={process.returncode}) after {elapsed:.1f}s", job_id)
             raise RuntimeError(
                 f"Audio fallback transcription failed (exit={process.returncode}, {elapsed:.1f}s): {combined_output[-2000:]}"
             )
 
         if not word_timestamps_path.exists():
-            _log_fallback(f"Whisper process exited OK but word_timestamps.json NOT found after {elapsed:.1f}s")
+            _log_fallback(f"Whisper process exited OK but word_timestamps.json NOT found after {elapsed:.1f}s", job_id)
             raise RuntimeError(
                 f"Audio fallback completed but word_timestamps.json not found at {word_timestamps_path}"
             )
 
         wt_size = word_timestamps_path.stat().st_size / 1024
-        _log_fallback(f"Whisper transcription SUCCESS in {elapsed:.1f}s, output {wt_size:.1f} KB")
+        _log_fallback(f"Whisper transcription SUCCESS in {elapsed:.1f}s, output {wt_size:.1f} KB", job_id)
         return word_timestamps_path
 
     except subprocess.TimeoutExpired:
@@ -1023,27 +1163,25 @@ def run_background_job(job_id: str, video_id: str, request_data: dict):
         cmd.append(request_data["source"])
 
 # Update job status
+        stdout_file = API_JOBS_DIR / f"{job_id}.stdout.log"
+        stderr_file = API_JOBS_DIR / f"{job_id}.stderr.log"
         jobs[job_id].update({
             "status": "running",
             "video_id": video_id,
             "command": " ".join(cmd),
-            "started_at": datetime.now(timezone.utc).isoformat()
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "stdout_log": str(stdout_file.relative_to(STORAGE_DIR)),
+            "stderr_log": str(stderr_file.relative_to(STORAGE_DIR))
         })
         save_job_metadata(job_id, jobs[job_id])
 
-# Run the command
-        result = subprocess.run(
-            cmd,
+# Run the command with progressive logs
+        result = run_process_redirect_logs(
+            cmd=cmd,
             cwd=str(APP_DIR),
-            capture_output=True,
-            text=True,
-            timeout=7200  # 2 hour timeout
+            job_id=job_id,
+            timeout=7200
         )
-
-        # Save full logs before determining status
-        log_paths = save_job_process_logs(job_id, result.stdout, result.stderr)
-        if log_paths:
-            jobs[job_id].update(log_paths)
 
         # Combine stdout and stderr for complete error context
         combined_output = combine_process_output(result.stdout, result.stderr)
@@ -1089,43 +1227,39 @@ def run_background_job(job_id: str, video_id: str, request_data: dict):
             "completed_at": datetime.now(timezone.utc).isoformat()
         })
 
+    # Clean up assets if the job failed and transcript is missing
+    if jobs[job_id].get("status") == "failed":
+        cleanup_assets_on_transcript_missing(video_id, job_id)
+
     # Persist final status
     save_job_metadata(job_id, jobs[job_id])
 
 
 def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_data: dict, cmd: list[str]):
-    """Run transcript job with audio fallback on failure.
-
-    This function runs the initial transcript command (./transcribe_youtube.sh).
-    If it fails, it falls back to audio transcription using Whisper
-    if a downloaded video file can be found.
-    """
+    """Run transcript job and abort/cleanup if YouTube transcript is not found."""
     job_step = "transcript"
-    request_languages = request_data.get("languages", "id,en")
 
     try:
-        # Update job status to running
+        # Update job status to running and pre-populate log paths
+        stdout_file = API_JOBS_DIR / f"{job_id}.stdout.log"
+        stderr_file = API_JOBS_DIR / f"{job_id}.stderr.log"
         jobs[job_id].update({
             "status": "running",
             "video_id": video_id,
             "command": " ".join(cmd),
-            "started_at": datetime.now(timezone.utc).isoformat()
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "stdout_log": str(stdout_file.relative_to(STORAGE_DIR)),
+            "stderr_log": str(stderr_file.relative_to(STORAGE_DIR))
         })
         save_job_metadata(job_id, jobs[job_id])
 
-        # Step 1: Run the original transcript command
-        result = subprocess.run(
-            cmd,
+        # Step 1: Run the original transcript command with progressive logs
+        result = run_process_redirect_logs(
+            cmd=cmd,
             cwd=str(APP_DIR),
-            capture_output=True,
-            text=True,
+            job_id=job_id,
             timeout=7200
         )
-
-        # Save full logs
-        log_paths = save_job_process_logs(job_id, result.stdout, result.stderr)
-        if log_paths:
-            jobs[job_id].update(log_paths)
 
         # Check if command succeeded and output exists
         if result.returncode == 0 and step_output_exists(job_step, video_id):
@@ -1137,61 +1271,14 @@ def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_d
             save_job_metadata(job_id, jobs[job_id])
             return  # Success - job is completed
 
-        # Command failed or no output - try audio fallback
+        # YouTube transcript is NOT found!
+        # Force shutdown and remove assets including downloaded video.
         combined = combine_process_output(result.stdout, result.stderr)
-        fallback_error = None
+        _log_fallback(f"YouTube transcript NOT found for {video_id}. Force shutting down and deleting assets...", job_id)
+        
+        cleanup_assets_on_transcript_missing(video_id, job_id)
 
-        _log_fallback(f"YouTube transcript command failed for {video_id} (exit={result.returncode})")
-        _log_fallback(f"  Reason: {combined[:300]}")
-
-        # Try to find downloaded video for fallback
-        video_path = find_downloaded_video(video_id)
-        if video_path:
-            try:
-                # Run audio fallback transcription
-                _log_fallback(f"Found video file: {video_path.name}, starting Whisper fallback")
-                print(f"Transcript command failed, trying audio fallback with {video_path}")
-                word_timestamps_path = run_audio_fallback_transcription(
-                    video_id=video_id,
-                    video_path=video_path,
-                    language=request_languages,
-                )
-
-                # Convert word timestamps to transcript files
-                _log_fallback("Converting word timestamps to transcript files ...")
-                convert_word_timestamps_to_transcript_files(
-                    video_id=video_id,
-                    language=request_languages,
-                )
-                _log_fallback("Conversion complete")
-
-                # Verify output now exists
-                if step_output_exists(job_step, video_id):
-                    _log_fallback(f"Transcript output verified for {video_id} — marking job completed")
-                    jobs[job_id].update({
-                        "status": "completed",
-                        "completed_at": datetime.now(timezone.utc).isoformat(),
-                        "returncode": 0,
-                        "fallback": "audio-whisper-fallback",
-                    })
-                    save_job_metadata(job_id, jobs[job_id])
-                    return  # Fallback success - job is completed
-                else:
-                    fallback_error = "Audio fallback completed but transcript output not found"
-                    _log_fallback(f"WARN: {fallback_error}")
-
-            except Exception as e:
-                fallback_error = str(e)[:1000]
-                _log_fallback(f"Whisper fallback FAILED: {fallback_error}")
-        else:
-            _log_fallback(f"No downloaded video found for {video_id} — cannot run audio fallback")
-
-        # Both failed - mark as failed
-        error_msg = f"Transcript failed. YouTube transcript: {combined[:500]}"
-        if fallback_error:
-            error_msg += f" | Audio fallback: {fallback_error}"
-
-        _log_fallback(f"All transcript methods FAILED for {video_id}")
+        error_msg = f"Transcript not found from YouTube. Process aborted and assets removed. Details: {combined[:500]}"
         jobs[job_id].update({
             "status": "failed",
             "error": error_msg,
@@ -1206,44 +1293,11 @@ def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_d
             jobs[job_id].update(log_paths)
 
         combined = combine_process_output(exc.stdout, exc.stderr)
-        error_msg = f"Transcript command timed out: {combined[-1000:]}"
+        error_msg = f"Transcript command timed out. Assets removed. Details: {combined[-500:]}"
 
-        _log_fallback(f"YouTube transcript command TIMED OUT for {video_id}")
+        _log_fallback(f"YouTube transcript command TIMED OUT for {video_id}. Cleaning up assets...", job_id)
+        cleanup_assets_on_transcript_missing(video_id, job_id)
 
-        # Try audio fallback even after timeout
-        video_path = find_downloaded_video(video_id)
-        if video_path:
-            try:
-                _log_fallback(f"Attempting Whisper fallback after timeout with {video_path.name}")
-                word_timestamps_path = run_audio_fallback_transcription(
-                    video_id=video_id,
-                    video_path=video_path,
-                    language=request_languages,
-                )
-                _log_fallback("Converting word timestamps to transcript files ...")
-                convert_word_timestamps_to_transcript_files(
-                    video_id=video_id,
-                    language=request_languages,
-                )
-                _log_fallback("Conversion complete")
-
-                if step_output_exists(job_step, video_id):
-                    _log_fallback(f"Transcript output verified for {video_id} after timeout fallback — completed")
-                    jobs[job_id].update({
-                        "status": "completed",
-                        "completed_at": datetime.now(timezone.utc).isoformat(),
-                        "fallback": "audio-whisper-fallback",
-                    })
-                    save_job_metadata(job_id, jobs[job_id])
-                    return
-
-            except Exception as fallback_e:
-                _log_fallback(f"Whisper fallback after timeout FAILED: {str(fallback_e)[:500]}")
-                error_msg += f" | Fallback also failed: {str(fallback_e)[:500]}"
-        else:
-            _log_fallback(f"No downloaded video found for {video_id} — cannot run audio fallback after timeout")
-
-        _log_fallback(f"All transcript methods FAILED for {video_id} (timeout path)")
         jobs[job_id].update({
             "status": "failed",
             "error": error_msg,
@@ -1252,10 +1306,12 @@ def run_transcript_job_with_audio_fallback(job_id: str, video_id: str, request_d
         save_job_metadata(job_id, jobs[job_id])
 
     except Exception as e:
-        _log_fallback(f"Unexpected error in transcript job for {video_id}: {str(e)[:300]}")
+        _log_fallback(f"Unexpected error in transcript job for {video_id}: {str(e)[:300]}. Cleaning up assets...", job_id)
+        cleanup_assets_on_transcript_missing(video_id, job_id)
+        
         jobs[job_id].update({
             "status": "failed",
-            "error": str(e)[:500],
+            "error": f"Unexpected error in transcript job. Assets removed. Details: {str(e)[:500]}",
             "completed_at": datetime.now(timezone.utc).isoformat()
         })
         save_job_metadata(job_id, jobs[job_id])
@@ -1271,11 +1327,15 @@ def run_command_job(job_id: str, video_id: str, cmd: list[str]):
     render_payload = request_data.get("render_payload")
 
     try:
+        stdout_file = API_JOBS_DIR / f"{job_id}.stdout.log"
+        stderr_file = API_JOBS_DIR / f"{job_id}.stderr.log"
         jobs[job_id].update({
             "status": "running",
             "video_id": video_id,
             "command": " ".join(cmd),
-            "started_at": datetime.now(timezone.utc).isoformat()
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "stdout_log": str(stdout_file.relative_to(STORAGE_DIR)),
+            "stderr_log": str(stderr_file.relative_to(STORAGE_DIR))
         })
         save_job_metadata(job_id, jobs[job_id])
 
@@ -1286,18 +1346,12 @@ def run_command_job(job_id: str, video_id: str, cmd: list[str]):
             # Rebuild result.json before opening runs so narrator can access render_payload
             ensure_result_json_for_render_payload(video_id, request_data)
 
-        result = subprocess.run(
-            cmd,
+        result = run_process_redirect_logs(
+            cmd=cmd,
             cwd=str(APP_DIR),
-            capture_output=True,
-            text=True,
+            job_id=job_id,
             timeout=7200
         )
-
-        # Save full logs
-        log_paths = save_job_process_logs(job_id, result.stdout, result.stderr)
-        if log_paths:
-            jobs[job_id].update(log_paths)
 
         # After command completes, verify expected output exists
         if result.returncode == 0:

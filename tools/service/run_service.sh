@@ -221,7 +221,6 @@ case "$MODE" in
       kill "$pid" || true
       
       # Wait briefly
-      local attempt
       for attempt in $(seq 1 10); do
         if ! pid_alive "$pid"; then
           break

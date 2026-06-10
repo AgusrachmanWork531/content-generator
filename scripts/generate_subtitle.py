@@ -88,6 +88,11 @@ def main():
         choices=["plain", "speech"],
         help="Optional audio preprocessing preset for transcription"
     )
+    parser.add_argument(
+        "--replace-original",
+        action="store_true",
+        help="Replace original video with burned version (only when --burn true)"
+    )
     
     args = parser.parse_args()
     
@@ -105,6 +110,7 @@ def main():
     print(f"Engine: {args.engine}")
     print(f"Formats: {output_formats}")
     print(f"Burn: {burn_subtitle}")
+    print(f"Replace Original: {args.replace_original}")
     print(f"Transcribe Model: {args.transcribe_model}")
     print(f"Transcribe Preset: {args.transcribe_preset}")
     if args.corrections_file:
@@ -138,20 +144,35 @@ def main():
     
     # Generate subtitles
     try:
-        result = engine.generate(
-            job_id=job.job_id,
-            video_path=args.video,
-            language=args.language,
-            output_formats=output_formats,
-            engine=args.engine,
-            style=args.style,
-            burn_subtitle=burn_subtitle,
-            transcribe_model=args.transcribe_model,
-            transcribe_preset=args.transcribe_preset,
-            initial_prompt=args.initial_prompt,
-            corrections_file=args.corrections_file,
-            audio_preset=args.audio_preset,
-        )
+        if burn_subtitle and args.replace_original:
+            result = engine.generate_burn(
+                job_id=job.job_id,
+                video_path=args.video,
+                language=args.language,
+                engine=args.engine,
+                style=args.style,
+                replace_original=True,
+                transcribe_model=args.transcribe_model,
+                transcribe_preset=args.transcribe_preset,
+                initial_prompt=args.initial_prompt,
+                corrections_file=args.corrections_file,
+                audio_preset=args.audio_preset,
+            )
+        else:
+            result = engine.generate(
+                job_id=job.job_id,
+                video_path=args.video,
+                language=args.language,
+                output_formats=output_formats,
+                engine=args.engine,
+                style=args.style,
+                burn_subtitle=burn_subtitle,
+                transcribe_model=args.transcribe_model,
+                transcribe_preset=args.transcribe_preset,
+                initial_prompt=args.initial_prompt,
+                corrections_file=args.corrections_file,
+                audio_preset=args.audio_preset,
+            )
 
         print("Subtitle generation completed!")
         print()
