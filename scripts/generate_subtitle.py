@@ -93,6 +93,23 @@ def main():
         action="store_true",
         help="Replace original video with burned version (only when --burn true)"
     )
+    parser.add_argument(
+        "--full-word-timestamps",
+        default=None,
+        help="Optional path to full video word timestamps JSON"
+    )
+    parser.add_argument(
+        "--clip-start",
+        type=float,
+        default=0.0,
+        help="Clip start time offset in seconds"
+    )
+    parser.add_argument(
+        "--clip-end",
+        type=float,
+        default=0.0,
+        help="Clip end time offset in seconds"
+    )
     
     args = parser.parse_args()
     
@@ -157,6 +174,9 @@ def main():
                 initial_prompt=args.initial_prompt,
                 corrections_file=args.corrections_file,
                 audio_preset=args.audio_preset,
+                full_word_timestamps=args.full_word_timestamps,
+                clip_start=args.clip_start,
+                clip_end=args.clip_end,
             )
         else:
             result = engine.generate(
@@ -172,6 +192,9 @@ def main():
                 initial_prompt=args.initial_prompt,
                 corrections_file=args.corrections_file,
                 audio_preset=args.audio_preset,
+                full_word_timestamps=args.full_word_timestamps,
+                clip_start=args.clip_start,
+                clip_end=args.clip_end,
             )
 
         print("Subtitle generation completed!")

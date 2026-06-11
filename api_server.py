@@ -687,6 +687,10 @@ def step_output_exists(step: str, video_id: str) -> bool:
                     return True
         return False
 
+    elif step == "youtube_upload":
+        # YouTube upload does not produce a local video file, so we consider it valid if job succeeded
+        return True
+
 # Unknown step - fall back to generic check
     return check_output_exists(video_id)
 
@@ -929,6 +933,35 @@ def validate_step_input(step: str, video_id: str) -> tuple[bool, Optional[str]]:
 
         return (True, None)
 
+    elif step == "youtube_upload":
+        # Need valid non-Telegram watermarked video from watermark step (or opening step).
+        watermarked_dir = run_dir / "watermarked"
+        if not watermarked_dir.exists():
+            return (False, f"watermarked directory does not exist: {watermarked_dir}")
+
+        mp4_files = find_opening_watermarked_inputs(run_dir)
+        if not mp4_files:
+            return (False, f"No non-Telegram *_wm.mp4 files found in {watermarked_dir}")
+
+        # Check file size stability (wait 2 seconds)
+        first_short = mp4_files[0]
+        size1 = first_short.stat().st_size
+        time.sleep(2)
+        size2 = first_short.stat().st_size
+        if size1 != size2:
+            return (False, "Input short is still being written")
+
+        # Validate the first short
+        is_valid, error = validate_mp4_file(first_short)
+        if not is_valid:
+            return (False, f"Input short invalid: {error}")
+
+        has_audio, audio_error = validate_audio_stream(first_short)
+        if not has_audio:
+            return (False, f"Input short has no audio stream: {audio_error}")
+
+        return (True, None)
+
     # Other steps - input validation not implemented yet
     return (True, None)
 
@@ -1137,8 +1170,45 @@ def check_command_runs(cmd: list[str]) -> bool:
 def run_background_job(job_id: str, video_id: str, request_data: dict):
     """Run the pipeline in background."""
     try:
+        # Check if watermark files and result.json already exist
+        run_dir = OUTPUT_DIR / video_id
+        has_watermarked = step_output_exists("watermark", video_id)
+        has_result_json = (run_dir / "result.json").exists()
+        if has_watermarked and has_result_json:
+            jobs[job_id].update({
+                "status": "completed",
+                "video_id": video_id,
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "warning": "Skipped full pipeline because watermarked video and result.json metadata are already present."
+            })
+            save_job_metadata(job_id, jobs[job_id])
+            # Write completed state to loading_state.json
+            loading_payload = {
+                "video_id": video_id,
+                "state": "completed",
+                "step": 13,
+                "total_steps": 13,
+                "progress": 100.0,
+                "label": "Completed",
+                "detail": "Bypassed pipeline: watermarked video and result.json metadata are already present",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                (run_dir / "loading_state.json").write_text(json.dumps(loading_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+                with (run_dir / "loading_history.jsonl").open("a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(loading_payload, ensure_ascii=False) + "\n")
+            except Exception:
+                pass
+            return
+
         # Build command arguments
         cmd = ["./run.sh", "-o", str(OUTPUT_DIR)]
+
+        if request_data.get("whisper_model"):
+            cmd.extend(["--whisper-model", str(request_data["whisper_model"])])
+        if request_data.get("whisper_preset"):
+            cmd.extend(["--whisper-preset", str(request_data["whisper_preset"])])
 
         if request_data.get("num_clips"):
             cmd.extend(["-n", str(request_data["num_clips"])])
@@ -1432,6 +1502,30 @@ def create_step_job(
 ) -> dict:
     """Create and enqueue a single-step job."""
     job_id = str(uuid.uuid4())
+    
+    # Check if watermark files and result.json already exist to bypass step
+    run_dir = OUTPUT_DIR / video_id
+    has_watermarked = step_output_exists("watermark", video_id)
+    has_result_json = (run_dir / "result.json").exists()
+    if has_watermarked and has_result_json and step in ["download", "transcript", "analyze", "render", "opening", "watermark"]:
+        jobs[job_id] = {
+            "job_id": job_id,
+            "video_id": video_id,
+            "status": "completed",
+            "step": step,
+            "request": request_data,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "warning": f"Skipped step '{step}' because watermarked video and result.json metadata are already present."
+        }
+        save_job_metadata(job_id, jobs[job_id])
+        return {
+            "job_id": job_id,
+            "step": step,
+            "status_url": f"/jobs/{job_id}",
+            "result_url": f"/jobs/{job_id}/result"
+        }
+
     jobs[job_id] = {
         "job_id": job_id,
         "video_id": video_id,
@@ -1474,6 +1568,19 @@ class GenerateRequest(BaseModel):
     opening_source_title: Optional[str] = ""
     opening_bgm: Optional[str] = ""
     opening_bgm_volume: Optional[float] = 0.30
+    youtube_privacy: Optional[str] = "unlisted"
+    youtube_category: Optional[str] = ""
+    youtube_language: Optional[str] = ""
+    youtube_title: Optional[str] = ""
+    youtube_description: Optional[str] = ""
+    youtube_tags: Optional[str] = ""
+    youtube_hashtags: Optional[str] = ""
+    youtube_pinned_comment: Optional[str] = ""
+    youtube_target_audience: Optional[str] = ""
+    youtube_content_warning: Optional[str] = ""
+    youtube_source_credit: Optional[str] = ""
+    whisper_model: Optional[str] = "small"
+    whisper_preset: Optional[str] = "fast"
 
 
 class StepRequest(GenerateRequest):
@@ -2010,6 +2117,11 @@ async def create_render_job(
     if render_payload_path:
         request_data["render_payload_path"] = str(render_payload_path.relative_to(STORAGE_DIR))
 
+    if request.whisper_model:
+        cmd.extend(["--whisper-model", str(request.whisper_model)])
+    if request.whisper_preset:
+        cmd.extend(["--whisper-preset", str(request.whisper_preset)])
+
     result = create_step_job(
         step="render",
         request_data=request_data,
@@ -2138,6 +2250,73 @@ async def create_watermark_job(
 
     return create_step_job(
         step="watermark",
+        request_data=request.model_dump(),
+        background_tasks=background_tasks,
+        cmd=cmd,
+        video_id=video_id,
+    )
+
+
+@app.post("/jobs/steps/youtube_upload")
+async def create_youtube_upload_job(
+    request: StepRequest,
+    background_tasks: BackgroundTasks,
+    token: str = Depends(verify_token)
+):
+    """Upload watermarked shorts to YouTube."""
+    try:
+        video_id = extract_video_id(request.source)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    active_watermark_jobs = find_active_step_jobs(video_id, "watermark")
+    if active_watermark_jobs:
+        active_job_ids = ", ".join(
+            str(job.get("job_id", "unknown")) for job in active_watermark_jobs
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Watermark step is still running for this video. "
+                "Wait until it completes before uploading. "
+                f"active_watermark_jobs={active_job_ids}"
+            )
+        )
+
+    # Validate input is ready before running step
+    is_ready, error_msg = validate_step_input("youtube_upload", video_id)
+    if not is_ready:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Input short is not ready or invalid: {error_msg}"
+        )
+
+    cmd = ["./upload_youtube_shorts.sh", "-r", video_id, "--use-watermarked"]
+    if request.youtube_privacy:
+        cmd.extend(["--privacy", str(request.youtube_privacy)])
+    if request.youtube_category:
+        cmd.extend(["--category", str(request.youtube_category)])
+    if request.youtube_language:
+        cmd.extend(["--language", str(request.youtube_language)])
+    if request.youtube_title:
+        cmd.extend(["--title", str(request.youtube_title)])
+    if request.youtube_description:
+        cmd.extend(["--description", str(request.youtube_description)])
+    if request.youtube_tags:
+        cmd.extend(["--tags", str(request.youtube_tags)])
+    if request.youtube_hashtags:
+        cmd.extend(["--hashtags", str(request.youtube_hashtags)])
+    if request.youtube_pinned_comment:
+        cmd.extend(["--pinned-comment", str(request.youtube_pinned_comment)])
+    if request.youtube_target_audience:
+        cmd.extend(["--target-audience", str(request.youtube_target_audience)])
+    if request.youtube_content_warning:
+        cmd.extend(["--content-warning", str(request.youtube_content_warning)])
+    if request.youtube_source_credit:
+        cmd.extend(["--source-credit", str(request.youtube_source_credit)])
+
+    return create_step_job(
+        step="youtube_upload",
         request_data=request.model_dump(),
         background_tasks=background_tasks,
         cmd=cmd,
@@ -2297,7 +2476,7 @@ async def get_job_result(
             })
 
     # Check shorts dir, but not for steps whose final artifact lives in watermarked/.
-    if job_step not in ("watermark", "opening"):
+    if job_step not in ("watermark", "opening", "youtube_upload"):
         shorts_dir = run_dir / "shorts"
         if shorts_dir.exists():
             for f in sorted(shorts_dir.glob("*.mp4")):
@@ -2322,6 +2501,20 @@ async def get_job_result(
         "result": result,
         "files": output_files
     }
+
+    if job_step == "youtube_upload" and job_status == "completed":
+        stdout_file = API_JOBS_DIR / f"{job_id}.stdout.log"
+        uploads = []
+        if stdout_file.exists():
+            try:
+                for line in stdout_file.read_text(encoding="utf-8", errors="replace").splitlines():
+                    if 'upload_url' in line:
+                        match = re.search(r'\{.*"upload_url".*\}', line)
+                        if match:
+                            uploads.append(json.loads(match.group(0)))
+            except Exception as e:
+                logger.warning(f"Failed to parse YouTube upload output: {e}")
+        response["youtube_uploads"] = uploads
 
     # Get step if this is a step-specific job (needed for artifact_status)
     job_step = job.get("step")
@@ -2404,6 +2597,57 @@ async def download_file(
         media_type="video/mp4",
         filename=filename
     )
+
+
+@app.get("/videos/{video_id}/status")
+async def get_video_status(video_id: str, token: str = Depends(verify_token)):
+    """Check if a video has completed watermark processing and get its results."""
+    run_dir = OUTPUT_DIR / video_id
+    result_file = run_dir / "result.json"
+    
+    if not result_file.exists():
+        return {"has_watermark": False, "files": []}
+
+    try:
+        metadata = json.loads(result_file.read_text())
+    except json.JSONDecodeError:
+        return {"has_watermark": False, "files": []}
+    
+    # Check for watermarked files
+    watermarked_dir = run_dir / "watermarked"
+    output_files = []
+    has_watermark = False
+    base_url = CONTENT_SHORT_BASE_URL.rstrip("/")
+    
+    if watermarked_dir.exists():
+        for f in sorted(watermarked_dir.glob("*.mp4")):
+            has_watermark = True
+            output_files.append({
+                "filename": f.name,
+                "path": f"storage/free-viral-shorts/{video_id}/watermarked/{f.name}",
+                "url": f"/videos/{video_id}/files/{f.name}",
+                "download_url": f"{base_url}/videos/{video_id}/files/{f.name}",
+                "size": f.stat().st_size
+            })
+
+    return {
+        "has_watermark": has_watermark,
+        "metadata": metadata,
+        "files": output_files
+    }
+
+
+@app.get("/videos/{video_id}/files/{filename}")
+async def get_video_file(video_id: str, filename: str, token: str = Depends(verify_token)):
+    """Serve specific video file from the watermarked directory."""
+    run_dir = OUTPUT_DIR / video_id
+    watermarked_dir = run_dir / "watermarked"
+    file_path = watermarked_dir / filename
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    return FileResponse(file_path)
 
 
 @app.get("/transcripts/{video_id}")

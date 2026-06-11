@@ -1,0 +1,989 @@
+{
+  "video_id": "9suGw_FOXig",
+  "num_clips": 1,
+  "quality": "1080",
+  "languages": "id,en",
+  "render_payload": {
+    "clip_index": 1,
+    "viral_score": 10,
+    "clip_type": "entertainment_comedy_jirayut_real_name_complete_context",
+    "start": 531.0,
+    "end": 636.0,
+    "duration": 105.0,
+    "max_duration_seconds": 120,
+    "hook_3_5_seconds": {
+      "start": 531.0,
+      "end": 533.0,
+      "text": "Nama asli dia bukan Jiray."
+    },
+    "opening_narration": {
+      "text": "Nama asli Jirayut ternyata apa? Obrolannya makin lucu karena nama keluarga Thailand ikut dibedah.",
+      "tone": "comedy_curiosity",
+      "placement": "before_clip",
+      "estimated_duration_seconds": 4
+    },
+    "transcribe_timeline": {
+      "duration": 105.0,
+      "segment_count": 72,
+      "segments": [
+        {
+          "start": 531.0,
+          "end": 533.0,
+          "duration": 2.0,
+          "text": "Nama asli dia bukan Jiray."
+        },
+        {
+          "start": 532.0,
+          "end": 534.0,
+          "duration": 2.0,
+          "text": "Nama dia aslinya bukan Jirayut."
+        },
+        {
+          "start": 533.0,
+          "end": 535.0,
+          "duration": 2.0,
+          "text": "Bukan Jirayut. Nama asli dia."
+        },
+        {
+          "start": 534.0,
+          "end": 538.0,
+          "duration": 4.0,
+          "text": "Namanya siapa?"
+        },
+        {
+          "start": 535.0,
+          "end": 539.0,
+          "duration": 4.0,
+          "text": "Pongar Jatmo."
+        },
+        {
+          "start": 538.0,
+          "end": 541.0,
+          "duration": 3.0,
+          "text": "Bukan. Bukan itu."
+        },
+        {
+          "start": 539.0,
+          "end": 543.0,
+          "duration": 4.0,
+          "text": "Bukan itu."
+        },
+        {
+          "start": 541.0,
+          "end": 544.0,
+          "duration": 3.0,
+          "text": "Sini sini. Eh emang dia tahu peng"
+        },
+        {
+          "start": 543.0,
+          "end": 545.0,
+          "duration": 2.0,
+          "text": "harajat m"
+        },
+        {
+          "start": 544.0,
+          "end": 546.0,
+          "duration": 2.0,
+          "text": "tahu."
+        },
+        {
+          "start": 545.0,
+          "end": 547.0,
+          "duration": 2.0,
+          "text": "Tahu. Emang kamu tahu pengharjat ma?"
+        },
+        {
+          "start": 546.0,
+          "end": 549.0,
+          "duration": 3.0,
+          "text": "Ya enggak orang pada ketawa ketawa juga."
+        },
+        {
+          "start": 549.0,
+          "end": 552.0,
+          "duration": 3.0,
+          "text": "Support banget."
+        },
+        {
+          "start": 550.0,
+          "end": 554.0,
+          "duration": 4.0,
+          "text": "Iya kita support sistem ya."
+        },
+        {
+          "start": 552.0,
+          "end": 556.0,
+          "duration": 4.0,
+          "text": "Iya iya iya iya iya iya."
+        },
+        {
+          "start": 554.0,
+          "end": 559.0,
+          "duration": 5.0,
+          "text": "Nama aku kasih tahu aja."
+        },
+        {
+          "start": 556.0,
+          "end": 562.0,
+          "duration": 6.0,
+          "text": "Nama asli aku itu e Afisan."
+        },
+        {
+          "start": 559.0,
+          "end": 563.0,
+          "duration": 4.0,
+          "text": "Afisan. Yes. Avanisan Came."
+        },
+        {
+          "start": 562.0,
+          "end": 564.0,
+          "duration": 2.0,
+          "text": "Hah?"
+        },
+        {
+          "start": 563.0,
+          "end": 564.0,
+          "duration": 1.0,
+          "text": "Avisan Came."
+        },
+        {
+          "start": 564.0,
+          "end": 565.0,
+          "duration": 1.0,
+          "text": "C."
+        },
+        {
+          "start": 564.0,
+          "end": 567.0,
+          "duration": 3.0,
+          "text": "Cek dirame."
+        },
+        {
+          "start": 565.0,
+          "end": 568.0,
+          "duration": 3.0,
+          "text": "C-nya apa?"
+        },
+        {
+          "start": 567.0,
+          "end": 570.0,
+          "duration": 3.0,
+          "text": "Bang itu namanya nih. Mana ya? Ini."
+        },
+        {
+          "start": 568.0,
+          "end": 571.0,
+          "duration": 3.0,
+          "text": "Oh, C tuh. J E H."
+        },
+        {
+          "start": 570.0,
+          "end": 573.0,
+          "duration": 3.0,
+          "text": "Iya. J C di dalam ramai."
+        },
+        {
+          "start": 571.0,
+          "end": 574.0,
+          "duration": 3.0,
+          "text": "Oh, J itu di Thailand bacanya C."
+        },
+        {
+          "start": 573.0,
+          "end": 576.0,
+          "duration": 3.0,
+          "text": "Cara,"
+        },
+        {
+          "start": 574.0,
+          "end": 579.0,
+          "duration": 5.0,
+          "text": "berarti kalau aku habis buang air, aku"
+        },
+        {
+          "start": 576.0,
+          "end": 579.0,
+          "duration": 3.0,
+          "text": "habis buang air berarti aku jebok."
+        },
+        {
+          "start": 579.0,
+          "end": 582.0,
+          "duration": 3.0,
+          "text": "Iya dong."
+        },
+        {
+          "start": 580.0,
+          "end": 587.0,
+          "duration": 7.0,
+          "text": "E CB ya. Soalnya di tangan itu kagak"
+        },
+        {
+          "start": 582.0,
+          "end": 590.0,
+          "duration": 8.0,
+          "text": "kagak ada huruf ee e J C jadinya jadinya"
+        },
+        {
+          "start": 587.0,
+          "end": 591.0,
+          "duration": 4.0,
+          "text": "cocan bacanya jadinya e J. Kalau huruf"
+        },
+        {
+          "start": 590.0,
+          "end": 591.0,
+          "duration": 1.0,
+          "text": "Inggris sih jadi j."
+        },
+        {
+          "start": 591.0,
+          "end": 593.0,
+          "duration": 2.0,
+          "text": "Oh gitu."
+        },
+        {
+          "start": 591.0,
+          "end": 594.0,
+          "duration": 3.0,
+          "text": "Turutannya kan cocan."
+        },
+        {
+          "start": 593.0,
+          "end": 596.0,
+          "duration": 3.0,
+          "text": "Afisan apa artinya?"
+        },
+        {
+          "start": 594.0,
+          "end": 597.0,
+          "duration": 3.0,
+          "text": "Avisan itu artinya"
+        },
+        {
+          "start": 596.0,
+          "end": 599.0,
+          "duration": 3.0,
+          "text": "itu kan nama Islam ya."
+        },
+        {
+          "start": 597.0,
+          "end": 600.0,
+          "duration": 3.0,
+          "text": "Iya itu nama e orang tua yang ngasih"
+        },
+        {
+          "start": 599.0,
+          "end": 603.0,
+          "duration": 4.0,
+          "text": "asin."
+        },
+        {
+          "start": 600.0,
+          "end": 604.0,
+          "duration": 4.0,
+          "text": "Kalau Jiraiku nama aku sendiri di"
+        },
+        {
+          "start": 603.0,
+          "end": 607.0,
+          "duration": 4.0,
+          "text": "panggung."
+        },
+        {
+          "start": 604.0,
+          "end": 609.0,
+          "duration": 5.0,
+          "text": "Gua ngeri gua terbang dah."
+        },
+        {
+          "start": 607.0,
+          "end": 609.0,
+          "duration": 2.0,
+          "text": "Banyak bcayapnya ya."
+        },
+        {
+          "start": 609.0,
+          "end": 612.0,
+          "duration": 3.0,
+          "text": "Terbang."
+        },
+        {
+          "start": 609.0,
+          "end": 613.0,
+          "duration": 4.0,
+          "text": "Iya. Oh berarti enggak nama di akta?"
+        },
+        {
+          "start": 612.0,
+          "end": 613.0,
+          "duration": 1.0,
+          "text": "Akta itu KTP."
+        },
+        {
+          "start": 613.0,
+          "end": 614.0,
+          "duration": 1.0,
+          "text": "Iya KTP."
+        },
+        {
+          "start": 613.0,
+          "end": 615.0,
+          "duration": 2.0,
+          "text": "Oke."
+        },
+        {
+          "start": 614.0,
+          "end": 616.0,
+          "duration": 2.0,
+          "text": "E apa"
+        },
+        {
+          "start": 615.0,
+          "end": 616.0,
+          "duration": 1.0,
+          "text": "ya? Ini"
+        },
+        {
+          "start": 616.0,
+          "end": 618.0,
+          "duration": 2.0,
+          "text": "Avisanya."
+        },
+        {
+          "start": 616.0,
+          "end": 620.0,
+          "duration": 4.0,
+          "text": "Aisan CD."
+        },
+        {
+          "start": 618.0,
+          "end": 620.0,
+          "duration": 2.0,
+          "text": "Tapi katanya nama panggung kamu Jerame"
+        },
+        {
+          "start": 620.0,
+          "end": 622.0,
+          "duration": 2.0,
+          "text": "itu"
+        },
+        {
+          "start": 620.0,
+          "end": 624.0,
+          "duration": 4.0,
+          "text": "kagak? Enggak pernah nama Jedame namaku"
+        },
+        {
+          "start": 622.0,
+          "end": 625.0,
+          "duration": 3.0,
+          "text": "Jirayu di panggung."
+        },
+        {
+          "start": 624.0,
+          "end": 626.0,
+          "duration": 2.0,
+          "text": "Oh nya Jeder Rame itu dari orang tua"
+        },
+        {
+          "start": 625.0,
+          "end": 627.0,
+          "duration": 2.0,
+          "text": "juga."
+        },
+        {
+          "start": 626.0,
+          "end": 628.0,
+          "duration": 2.0,
+          "text": "Enggak boleh ini. Enggak boleh"
+        },
+        {
+          "start": 627.0,
+          "end": 628.0,
+          "duration": 1.0,
+          "text": "sembarangan."
+        },
+        {
+          "start": 628.0,
+          "end": 629.0,
+          "duration": 1.0,
+          "text": "Apanya?"
+        },
+        {
+          "start": 628.0,
+          "end": 630.0,
+          "duration": 2.0,
+          "text": "Ini nama kakekku"
+        },
+        {
+          "start": 629.0,
+          "end": 631.0,
+          "duration": 2.0,
+          "text": "yang sembangan."
+        },
+        {
+          "start": 630.0,
+          "end": 632.0,
+          "duration": 2.0,
+          "text": "Jam"
+        },
+        {
+          "start": 631.0,
+          "end": 633.0,
+          "duration": 2.0,
+          "text": "yang sembarangan siapa? Gua nanya doang."
+        },
+        {
+          "start": 632.0,
+          "end": 633.0,
+          "duration": 1.0,
+          "text": "Oh iya iya benar."
+        },
+        {
+          "start": 633.0,
+          "end": 635.0,
+          "duration": 2.0,
+          "text": "Enggak ada yang ngomong apa?"
+        },
+        {
+          "start": 633.0,
+          "end": 636.0,
+          "duration": 3.0,
+          "text": "Jeder Rame itu nama kakekku."
+        },
+        {
+          "start": 635.0,
+          "end": 636.0,
+          "duration": 1.0,
+          "text": "Berarti kayak Marga."
+        }
+      ]
+    },
+    "selected_transcript": [
+      {
+        "start": 531.0,
+        "end": 533.0,
+        "duration": 2.0,
+        "text": "Nama asli dia bukan Jiray."
+      },
+      {
+        "start": 532.0,
+        "end": 534.0,
+        "duration": 2.0,
+        "text": "Nama dia aslinya bukan Jirayut."
+      },
+      {
+        "start": 533.0,
+        "end": 535.0,
+        "duration": 2.0,
+        "text": "Bukan Jirayut. Nama asli dia."
+      },
+      {
+        "start": 534.0,
+        "end": 538.0,
+        "duration": 4.0,
+        "text": "Namanya siapa?"
+      },
+      {
+        "start": 535.0,
+        "end": 539.0,
+        "duration": 4.0,
+        "text": "Pongar Jatmo."
+      },
+      {
+        "start": 538.0,
+        "end": 541.0,
+        "duration": 3.0,
+        "text": "Bukan. Bukan itu."
+      },
+      {
+        "start": 539.0,
+        "end": 543.0,
+        "duration": 4.0,
+        "text": "Bukan itu."
+      },
+      {
+        "start": 541.0,
+        "end": 544.0,
+        "duration": 3.0,
+        "text": "Sini sini. Eh emang dia tahu peng"
+      },
+      {
+        "start": 543.0,
+        "end": 545.0,
+        "duration": 2.0,
+        "text": "harajat m"
+      },
+      {
+        "start": 544.0,
+        "end": 546.0,
+        "duration": 2.0,
+        "text": "tahu."
+      },
+      {
+        "start": 545.0,
+        "end": 547.0,
+        "duration": 2.0,
+        "text": "Tahu. Emang kamu tahu pengharjat ma?"
+      },
+      {
+        "start": 546.0,
+        "end": 549.0,
+        "duration": 3.0,
+        "text": "Ya enggak orang pada ketawa ketawa juga."
+      },
+      {
+        "start": 549.0,
+        "end": 552.0,
+        "duration": 3.0,
+        "text": "Support banget."
+      },
+      {
+        "start": 550.0,
+        "end": 554.0,
+        "duration": 4.0,
+        "text": "Iya kita support sistem ya."
+      },
+      {
+        "start": 552.0,
+        "end": 556.0,
+        "duration": 4.0,
+        "text": "Iya iya iya iya iya iya."
+      },
+      {
+        "start": 554.0,
+        "end": 559.0,
+        "duration": 5.0,
+        "text": "Nama aku kasih tahu aja."
+      },
+      {
+        "start": 556.0,
+        "end": 562.0,
+        "duration": 6.0,
+        "text": "Nama asli aku itu e Afisan."
+      },
+      {
+        "start": 559.0,
+        "end": 563.0,
+        "duration": 4.0,
+        "text": "Afisan. Yes. Avanisan Came."
+      },
+      {
+        "start": 562.0,
+        "end": 564.0,
+        "duration": 2.0,
+        "text": "Hah?"
+      },
+      {
+        "start": 563.0,
+        "end": 564.0,
+        "duration": 1.0,
+        "text": "Avisan Came."
+      },
+      {
+        "start": 564.0,
+        "end": 565.0,
+        "duration": 1.0,
+        "text": "C."
+      },
+      {
+        "start": 564.0,
+        "end": 567.0,
+        "duration": 3.0,
+        "text": "Cek dirame."
+      },
+      {
+        "start": 565.0,
+        "end": 568.0,
+        "duration": 3.0,
+        "text": "C-nya apa?"
+      },
+      {
+        "start": 567.0,
+        "end": 570.0,
+        "duration": 3.0,
+        "text": "Bang itu namanya nih. Mana ya? Ini."
+      },
+      {
+        "start": 568.0,
+        "end": 571.0,
+        "duration": 3.0,
+        "text": "Oh, C tuh. J E H."
+      },
+      {
+        "start": 570.0,
+        "end": 573.0,
+        "duration": 3.0,
+        "text": "Iya. J C di dalam ramai."
+      },
+      {
+        "start": 571.0,
+        "end": 574.0,
+        "duration": 3.0,
+        "text": "Oh, J itu di Thailand bacanya C."
+      },
+      {
+        "start": 573.0,
+        "end": 576.0,
+        "duration": 3.0,
+        "text": "Cara,"
+      },
+      {
+        "start": 574.0,
+        "end": 579.0,
+        "duration": 5.0,
+        "text": "berarti kalau aku habis buang air, aku"
+      },
+      {
+        "start": 576.0,
+        "end": 579.0,
+        "duration": 3.0,
+        "text": "habis buang air berarti aku jebok."
+      },
+      {
+        "start": 579.0,
+        "end": 582.0,
+        "duration": 3.0,
+        "text": "Iya dong."
+      },
+      {
+        "start": 580.0,
+        "end": 587.0,
+        "duration": 7.0,
+        "text": "E CB ya. Soalnya di tangan itu kagak"
+      },
+      {
+        "start": 582.0,
+        "end": 590.0,
+        "duration": 8.0,
+        "text": "kagak ada huruf ee e J C jadinya jadinya"
+      },
+      {
+        "start": 587.0,
+        "end": 591.0,
+        "duration": 4.0,
+        "text": "cocan bacanya jadinya e J. Kalau huruf"
+      },
+      {
+        "start": 590.0,
+        "end": 591.0,
+        "duration": 1.0,
+        "text": "Inggris sih jadi j."
+      },
+      {
+        "start": 591.0,
+        "end": 593.0,
+        "duration": 2.0,
+        "text": "Oh gitu."
+      },
+      {
+        "start": 591.0,
+        "end": 594.0,
+        "duration": 3.0,
+        "text": "Turutannya kan cocan."
+      },
+      {
+        "start": 593.0,
+        "end": 596.0,
+        "duration": 3.0,
+        "text": "Afisan apa artinya?"
+      },
+      {
+        "start": 594.0,
+        "end": 597.0,
+        "duration": 3.0,
+        "text": "Avisan itu artinya"
+      },
+      {
+        "start": 596.0,
+        "end": 599.0,
+        "duration": 3.0,
+        "text": "itu kan nama Islam ya."
+      },
+      {
+        "start": 597.0,
+        "end": 600.0,
+        "duration": 3.0,
+        "text": "Iya itu nama e orang tua yang ngasih"
+      },
+      {
+        "start": 599.0,
+        "end": 603.0,
+        "duration": 4.0,
+        "text": "asin."
+      },
+      {
+        "start": 600.0,
+        "end": 604.0,
+        "duration": 4.0,
+        "text": "Kalau Jiraiku nama aku sendiri di"
+      },
+      {
+        "start": 603.0,
+        "end": 607.0,
+        "duration": 4.0,
+        "text": "panggung."
+      },
+      {
+        "start": 604.0,
+        "end": 609.0,
+        "duration": 5.0,
+        "text": "Gua ngeri gua terbang dah."
+      },
+      {
+        "start": 607.0,
+        "end": 609.0,
+        "duration": 2.0,
+        "text": "Banyak bcayapnya ya."
+      },
+      {
+        "start": 609.0,
+        "end": 612.0,
+        "duration": 3.0,
+        "text": "Terbang."
+      },
+      {
+        "start": 609.0,
+        "end": 613.0,
+        "duration": 4.0,
+        "text": "Iya. Oh berarti enggak nama di akta?"
+      },
+      {
+        "start": 612.0,
+        "end": 613.0,
+        "duration": 1.0,
+        "text": "Akta itu KTP."
+      },
+      {
+        "start": 613.0,
+        "end": 614.0,
+        "duration": 1.0,
+        "text": "Iya KTP."
+      },
+      {
+        "start": 613.0,
+        "end": 615.0,
+        "duration": 2.0,
+        "text": "Oke."
+      },
+      {
+        "start": 614.0,
+        "end": 616.0,
+        "duration": 2.0,
+        "text": "E apa"
+      },
+      {
+        "start": 615.0,
+        "end": 616.0,
+        "duration": 1.0,
+        "text": "ya? Ini"
+      },
+      {
+        "start": 616.0,
+        "end": 618.0,
+        "duration": 2.0,
+        "text": "Avisanya."
+      },
+      {
+        "start": 616.0,
+        "end": 620.0,
+        "duration": 4.0,
+        "text": "Aisan CD."
+      },
+      {
+        "start": 618.0,
+        "end": 620.0,
+        "duration": 2.0,
+        "text": "Tapi katanya nama panggung kamu Jerame"
+      },
+      {
+        "start": 620.0,
+        "end": 622.0,
+        "duration": 2.0,
+        "text": "itu"
+      },
+      {
+        "start": 620.0,
+        "end": 624.0,
+        "duration": 4.0,
+        "text": "kagak? Enggak pernah nama Jedame namaku"
+      },
+      {
+        "start": 622.0,
+        "end": 625.0,
+        "duration": 3.0,
+        "text": "Jirayu di panggung."
+      },
+      {
+        "start": 624.0,
+        "end": 626.0,
+        "duration": 2.0,
+        "text": "Oh nya Jeder Rame itu dari orang tua"
+      },
+      {
+        "start": 625.0,
+        "end": 627.0,
+        "duration": 2.0,
+        "text": "juga."
+      },
+      {
+        "start": 626.0,
+        "end": 628.0,
+        "duration": 2.0,
+        "text": "Enggak boleh ini. Enggak boleh"
+      },
+      {
+        "start": 627.0,
+        "end": 628.0,
+        "duration": 1.0,
+        "text": "sembarangan."
+      },
+      {
+        "start": 628.0,
+        "end": 629.0,
+        "duration": 1.0,
+        "text": "Apanya?"
+      },
+      {
+        "start": 628.0,
+        "end": 630.0,
+        "duration": 2.0,
+        "text": "Ini nama kakekku"
+      },
+      {
+        "start": 629.0,
+        "end": 631.0,
+        "duration": 2.0,
+        "text": "yang sembangan."
+      },
+      {
+        "start": 630.0,
+        "end": 632.0,
+        "duration": 2.0,
+        "text": "Jam"
+      },
+      {
+        "start": 631.0,
+        "end": 633.0,
+        "duration": 2.0,
+        "text": "yang sembarangan siapa? Gua nanya doang."
+      },
+      {
+        "start": 632.0,
+        "end": 633.0,
+        "duration": 1.0,
+        "text": "Oh iya iya benar."
+      },
+      {
+        "start": 633.0,
+        "end": 635.0,
+        "duration": 2.0,
+        "text": "Enggak ada yang ngomong apa?"
+      },
+      {
+        "start": 633.0,
+        "end": 636.0,
+        "duration": 3.0,
+        "text": "Jeder Rame itu nama kakekku."
+      },
+      {
+        "start": 635.0,
+        "end": 636.0,
+        "duration": 1.0,
+        "text": "Berarti kayak Marga."
+      }
+    ],
+    "standalone_context": "Clip ini bisa dipahami tanpa video asli karena langsung membahas bahwa nama asli Jirayut bukan Jirayut, lalu Jirayut menjelaskan nama aslinya, cara baca huruf J di Thailand, arti nama Afisan, sampai nama keluarga/kakeknya.",
+    "understandable_without_original_video": true,
+    "range_alignment_validation": {
+      "requested_range_start": 531.0,
+      "requested_range_end": 636.0,
+      "actual_first_segment_start": 531.0,
+      "actual_last_segment_end": 636.0,
+      "context_shifted": false,
+      "context_complete": true,
+      "note": "Range output mengikuti segment asli yang terambil penuh, tanpa mengurangi atau melebihkan isi segment, dan ending pembahasan dibuat selesai."
+    },
+    "structure": {
+      "hook": "Hook dimulai dari pernyataan bahwa nama asli Jirayut bukan Jirayut.",
+      "context": "Jirayut menjelaskan nama aslinya adalah Afisan dan menerangkan cara baca huruf J/C di Thailand.",
+      "conflict_or_funny_moment": "Host memelesetkan penjelasan huruf J menjadi punchline soal 'jebok', lalu obrolan lanjut ke arti nama dan nama keluarga.",
+      "payoff": "Pembahasan selesai saat Jirayut menjelaskan bahwa Jeder Rame adalah nama kakek/nama keluarga, lalu host menyimpulkan itu seperti marga."
+    },
+    "youtube_metadata": {
+      "title": "Nama Asli Jirayut Ternyata Apa?",
+      "description": "Jirayut menjelaskan nama aslinya, cara baca huruf Thailand, sampai nama keluarga dari kakeknya. Obrolan yang awalnya serius malah jadi penuh punchline lucu.",
+      "hashtags": [
+        "#shorts",
+        "#youtubeshorts",
+        "#hiburan",
+        "#lucu",
+        "#jirayut",
+        "#duobahlul",
+        "#podcastlucu",
+        "#komediindonesia",
+        "#viralshorts",
+        "#fyp"
+      ],
+      "youtube_tags": [
+        "Jirayut",
+        "nama asli Jirayut",
+        "Duo Bahlul",
+        "podcast lucu",
+        "komedi Indonesia",
+        "bahasa Thailand",
+        "shorts lucu",
+        "momen viral",
+        "nama Thailand",
+        "konten hiburan"
+      ],
+      "pinned_comment": "Kalian baru tahu juga nama asli Jirayut bukan Jirayut?",
+      "thumbnail_visual_idea": "Close-up Jirayut bingung sambil host menunjuk, teks besar 'NAMA ASLI JIRAYUT TERNYATA APA?' dengan elemen huruf Thailand.",
+      "audience_target": "Fans Jirayut, penonton komedi podcast, dan penonton Shorts yang suka momen salah paham lucu.",
+      "upload_angle": "Momen nama asli Jirayut yang berubah jadi komedi bahasa dan budaya.",
+      "thumbnail_text": "NAMA ASLI JIRAYUT TERNYATA APA?",
+      "thumbnail_text_word_count": 5,
+      "thumbnail_text_min_words": 4,
+      "thumbnail_text_curiosity_goal": "Membuat viewer bertanya-tanya dan penasaran sebelum menonton clip."
+    },
+    "subtitle_recommendation": {
+      "style": "short_kinetic_caption",
+      "max_words_per_line": 4,
+      "highlight_words": [
+        "NAMA ASLI",
+        "BUKAN JIRAYUT",
+        "AFISAN",
+        "JEH",
+        "NAMA KAKEK"
+      ],
+      "sample_lines": [
+        "BUKAN JIRAYUT?",
+        "NAMA ASLINYA",
+        "AFISAN CAME",
+        "J DIBACA C",
+        "NAMA KAKEKKU"
+      ]
+    },
+    "editing_recommendation": {
+      "recommended_cut_style": [
+        "fast cut",
+        "reaction cut",
+        "zoom in",
+        "punchline pause"
+      ],
+      "sound_effect_suggestion": [
+        "pop",
+        "record scratch",
+        "laugh effect",
+        "vine boom"
+      ],
+      "b_roll_or_zoom_suggestion": "Zoom saat 'nama asli dia bukan Jirayut', beri record scratch pada punchline 'jebok', lalu beri text highlight saat nama keluarga/kakek disebut."
+    },
+    "source_video": {
+      "video_id": "9suGw_FOXig",
+      "job_id": null,
+      "status": "completed"
+    }
+  }
+}

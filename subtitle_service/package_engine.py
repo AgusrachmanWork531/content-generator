@@ -78,6 +78,9 @@ class PackageEngine:
         initial_prompt: str = "",
         corrections_file: Optional[str] = None,
         audio_preset: Optional[str] = None,
+        full_word_timestamps: Optional[str] = None,
+        clip_start: float = 0.0,
+        clip_end: float = 0.0,
     ) -> dict:
         """Generate subtitles using package engine."""
         if output_formats is None:
@@ -131,6 +134,9 @@ class PackageEngine:
                     initial_prompt=initial_prompt,
                     corrections_file=corrections_file,
                     audio_preset=audio_preset,
+                    full_word_timestamps=full_word_timestamps,
+                    clip_start=clip_start,
+                    clip_end=clip_end,
                 )
                 used_engine = "auto-captions"
                 print(f"[PackageEngine] Auto-captions generation completed successfully")
@@ -165,6 +171,9 @@ class PackageEngine:
                     initial_prompt=initial_prompt,
                     corrections_file=corrections_file,
                     audio_preset=audio_preset,
+                    full_word_timestamps=full_word_timestamps,
+                    clip_start=clip_start,
+                    clip_end=clip_end,
                 )
                 used_engine = "auto-captions"
             except Exception as e:
@@ -308,6 +317,9 @@ class PackageEngine:
         initial_prompt: str = "",
         corrections_file: Optional[str] = None,
         audio_preset: Optional[str] = None,
+        full_word_timestamps: Optional[str] = None,
+        clip_start: float = 0.0,
+        clip_end: float = 0.0,
     ) -> dict:
         """Generate and burn subtitles to video."""
         result = self.generate(
@@ -323,6 +335,9 @@ class PackageEngine:
             initial_prompt=initial_prompt,
             corrections_file=corrections_file,
             audio_preset=audio_preset,
+            full_word_timestamps=full_word_timestamps,
+            clip_start=clip_start,
+            clip_end=clip_end,
         )
 
         outputs = result.get("outputs") or {}

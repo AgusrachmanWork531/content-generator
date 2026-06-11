@@ -413,6 +413,9 @@ stderr="Auto-captions Python environment missing whisper. Set SUBTITLE_AUTOCAPTI
         initial_prompt: str = "",
         corrections_file: Optional[str] = None,
         audio_preset: Optional[str] = None,
+        full_word_timestamps: Optional[str] = None,
+        clip_start: float = 0.0,
+        clip_end: float = 0.0,
     ) -> dict:
         """Generate subtitles using auto-captions.
         
@@ -440,16 +443,50 @@ stderr="Auto-captions Python environment missing whisper. Set SUBTITLE_AUTOCAPTI
         style_config = get_subtitle_style(style)
 
         # Step 1: Generate word timestamps
-        json_path = self._run_caption_generator(
-            input_video=input_video,
-            output_dir=output_dir,
-            language=language,
-            model=transcribe_model,
-            preset=transcribe_preset,
-            initial_prompt=initial_prompt,
-            corrections_file=corrections_file,
-            audio_preset=audio_preset,
-        )
+        json_path = output_dir / "word_timestamps.json"
+        
+        if full_word_timestamps and os.path.exists(full_word_timestamps):
+            print(f"[AutoCaptions] Using cached full video word timestamps: {full_word_timestamps}")
+            import json
+            try:
+                with open(full_word_timestamps, "r", encoding="utf-8") as f:
+                    full_words = json.load(f)
+                
+                sliced_words = []
+                for w in full_words:
+                    mid = (w["start"] + w["end"]) / 2
+                    if clip_start <= mid <= clip_end:
+                        w_copy = dict(w)
+                        w_copy["start"] = max(0.0, w["start"] - clip_start)
+                        w_copy["end"] = max(w_copy["start"] + 0.01, w["end"] - clip_start)
+                        sliced_words.append(w_copy)
+                
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(sliced_words, f, ensure_ascii=False, indent=2)
+                print(f"[AutoCaptions] Sliced {len(sliced_words)} words for clip range [{clip_start:.2f}, {clip_end:.2f}]")
+            except Exception as e:
+                print(f"[AutoCaptions] Error slicing full timestamps: {e}. Falling back to Whisper.")
+                json_path = self._run_caption_generator(
+                    input_video=input_video,
+                    output_dir=output_dir,
+                    language=language,
+                    model=transcribe_model,
+                    preset=transcribe_preset,
+                    initial_prompt=initial_prompt,
+                    corrections_file=corrections_file,
+                    audio_preset=audio_preset,
+                )
+        else:
+            json_path = self._run_caption_generator(
+                input_video=input_video,
+                output_dir=output_dir,
+                language=language,
+                model=transcribe_model,
+                preset=transcribe_preset,
+                initial_prompt=initial_prompt,
+                corrections_file=corrections_file,
+                audio_preset=audio_preset,
+            )
 
         outputs = {}
 

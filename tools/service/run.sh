@@ -34,6 +34,8 @@ OPENING_REVIEW_GATE=0
 OPENING_BGM_REVIEW_GATE=0
 TRANSCRIPT_REVIEW_GATE=0
 SUBTITLE_FONT_NAME=""
+WHISPER_MODEL="${WHISPER_MODEL:-small}"
+WHISPER_PRESET="${WHISPER_PRESET:-fast}"
 
 WATERMARK_ENABLED=1
 WATERMARK_TEXT=""
@@ -406,6 +408,16 @@ parse_args() {
         SUBTITLE_FONT_NAME="$2"
         shift 2
         ;;
+      --whisper-model)
+        [ "$#" -ge 2 ] || die "Missing value for $1"
+        WHISPER_MODEL="$2"
+        shift 2
+        ;;
+      --whisper-preset)
+        [ "$#" -ge 2 ] || die "Missing value for $1"
+        WHISPER_PRESET="$2"
+        shift 2
+        ;;
       --analyze-only)
         ANALYZE_ONLY=1
         SKIP_DOWNLOAD=1
@@ -513,7 +525,9 @@ main() {
   [ -n "$OPENING_VOICE" ] && viral_args+=("--opening-voice" "$OPENING_VOICE")
   [ -n "$OPENING_RATE" ] && viral_args+=("--opening-rate" "$OPENING_RATE")
   [ -n "$OPENING_PITCH" ] && viral_args+=("--opening-pitch" "$OPENING_PITCH")
-[ -n "$SUBTITLE_FONT_NAME" ] && viral_args+=("--subtitle-font-name" "$SUBTITLE_FONT_NAME")
+  [ -n "$SUBTITLE_FONT_NAME" ] && viral_args+=("--subtitle-font-name" "$SUBTITLE_FONT_NAME")
+  [ -n "$WHISPER_MODEL" ] && viral_args+=("--whisper-model" "$WHISPER_MODEL")
+  [ -n "$WHISPER_PRESET" ] && viral_args+=("--whisper-preset" "$WHISPER_PRESET")
   viral_args+=("${SOURCES[@]}")
 
   log "Running viral shorts pipeline"

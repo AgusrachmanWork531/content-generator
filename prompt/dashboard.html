@@ -290,7 +290,7 @@
         .stepper {
             position: relative;
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(7, 1fr);
             gap: 16px;
             margin-bottom: 40px;
         }
@@ -1234,6 +1234,11 @@
                         <div class="step-number">06</div>
                         <div class="step-label">Generate Opening Narration</div>
                     </div>
+
+                    <div class="step-item" id="stepYoutubeUpload">
+                        <div class="step-number">07</div>
+                        <div class="step-label">Upload YouTube</div>
+                    </div>
                 </div>
 
                 <div class="review-panel">
@@ -1453,6 +1458,102 @@
                     </div>
                 </div>
 
+                <div class="font-settings-panel" id="youtubeUploadPanel" style="margin-top: 18px; display: none; border-color: #381a1f; background: radial-gradient(circle at top right, rgba(255, 0, 85, 0.05), transparent 34%), #0b0809;">
+                    <div class="font-settings-header">
+                        <div>
+                            <div class="font-settings-title" style="color: #ff3366; display: flex; align-items: center; gap: 8px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.545 12 3.545 12 3.545s-7.518 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.87.508 9.388.508 9.388.508s7.518 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                                <span>YouTube Upload Review</span>
+                            </div>
+                            <div class="font-settings-desc" style="color: #a48c90;">
+                                Review video final dan edit metadata sebelum di-upload ke YouTube Shorts.
+                            </div>
+                        </div>
+                        <div class="font-settings-badge" style="background: rgba(255, 0, 85, 0.08); border-color: rgba(255, 0, 85, 0.22); color: #ff3366;">Step 07 config</div>
+                    </div>
+
+                    <div class="font-settings-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- Left Column: Video Preview -->
+                        <div class="font-setting-card" style="display: flex; flex-direction: column; gap: 12px; background: #0c0a0b; border: 1px solid #221a1c; padding: 16px; border-radius: 16px; height: 100%; justify-content: flex-start;">
+                            <label class="font-label" style="color: #ff5577;">Final Video Preview</label>
+                            <div style="display: flex; align-items: center; justify-content: center; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 9/16; max-height: 480px; position: relative; width: 100%; border: 1px solid #1f1416;">
+                                <video id="finalVideoPreview" controls style="width: 100%; height: 100%; object-fit: contain;"></video>
+                            </div>
+                            <div id="videoSourceLabel" style="font-size: 11px; color: #888; text-align: center; word-break: break-all;">No video loaded</div>
+                        </div>
+
+                        <!-- Right Column: Metadata Form -->
+                        <div class="font-setting-card" style="display: flex; flex-direction: column; gap: 14px; background: #0c0a0b; border: 1px solid #221a1c; padding: 16px; border-radius: 16px;">
+                            <div>
+                                <label class="font-label" for="ytTitle" style="margin-bottom: 6px; display: flex; justify-content: space-between;">
+                                    <span>Title</span>
+                                    <span id="ytTitleCharCount" style="color: #666; font-size: 11px;">0/100</span>
+                                </label>
+                                <input type="text" id="ytTitle" maxlength="100" style="width: 100%; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 13px; outline: none;" placeholder="YouTube Shorts Title" />
+                            </div>
+
+                            <div>
+                                <label class="font-label" for="ytDescription" style="margin-bottom: 6px;">Description</label>
+                                <textarea id="ytDescription" style="width: 100%; height: 80px; padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 13px; font-family: inherit; resize: none; outline: none;" placeholder="YouTube Shorts Description"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="font-label" for="ytTags" style="margin-bottom: 6px;">Tags (comma separated)</label>
+                                <input type="text" id="ytTags" style="width: 100%; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 13px; outline: none;" placeholder="e.g. funny, comedy, viral" />
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div>
+                                    <label class="font-label" for="ytPrivacy" style="margin-bottom: 6px;">Privacy Status</label>
+                                    <select class="font-select" id="ytPrivacy" style="height: 38px; border-radius: 10px; width: 100%;">
+                                        <option value="unlisted" selected>Unlisted</option>
+                                        <option value="private">Private</option>
+                                        <option value="public">Public</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="font-label" for="ytCategory" style="margin-bottom: 6px;">Category</label>
+                                    <select class="font-select" id="ytCategory" style="height: 38px; border-radius: 10px; width: 100%;">
+                                        <option value="People & Blogs">People & Blogs</option>
+                                        <option value="Entertainment" selected>Entertainment</option>
+                                        <option value="Comedy">Comedy</option>
+                                        <option value="Education">Education</option>
+                                        <option value="Howto & Style">Howto & Style</option>
+                                        <option value="Film & Animation">Film & Animation</option>
+                                        <option value="Gaming">Gaming</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div>
+                                    <label class="font-label" for="ytAudience" style="margin-bottom: 6px;">Audience</label>
+                                    <select class="font-select" id="ytAudience" style="height: 38px; border-radius: 10px; width: 100%;">
+                                        <option value="not-made-for-kids" selected>Not Made for Kids</option>
+                                        <option value="made-for-kids">Made for Kids</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="font-label" for="ytLanguage" style="margin-bottom: 6px;">Video Language</label>
+                                    <select class="font-select" id="ytLanguage" style="height: 38px; border-radius: 10px; width: 100%;">
+                                        <option value="id" selected>Indonesian (id)</option>
+                                        <option value="en">English (en)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="font-label" for="ytPinnedComment" style="margin-bottom: 6px;">Pinned Comment (Optional)</label>
+                                <input type="text" id="ytPinnedComment" style="width: 100%; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid #2a2a2a; background: #111; color: #fff; font-size: 13px; outline: none;" placeholder="e.g. Subscribe for more clips!" />
+                            </div>
+
+                            <button class="render-btn" id="uploadToYoutubeBtn" style="background: linear-gradient(135deg, #ff0055, #ff5500); color: #fff; margin-top: 10px; height: 44px; font-weight: bold; border: none; cursor: pointer; border-radius: 999px;">
+                                Confirm & Upload to YouTube
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="font-settings-panel" id="resultsPanel" style="margin-top: 18px; border-color: #1a3c22; background: radial-gradient(circle at top right, rgba(120, 255, 170, 0.05), transparent 34%), #080f0a; display: none;">
                     <div class="font-settings-header">
                         <div>
@@ -1506,6 +1607,7 @@
         let currentVideoUrl = "";
         let currentVideoId = "";
         let lastRenderJobId = "";
+        let currentMetadataPayload = null;
 
         async function fetchApi(endpoint, options = {}) {
             const url = `${API_BASE}${endpoint}`;
@@ -1782,6 +1884,18 @@ ${transcript}
         const generateOpeningBtn = document.getElementById("generateOpeningBtn");
         const resultsPanel = document.getElementById("resultsPanel");
         const resultsList = document.getElementById("resultsList");
+        const youtubeUploadPanel = document.getElementById("youtubeUploadPanel");
+        const uploadToYoutubeBtn = document.getElementById("uploadToYoutubeBtn");
+
+        const stepNumbers = {
+            stepDownload: "01",
+            stepTranscript: "02",
+            renderStep: "03",
+            stepSubtitle: "04",
+            stepWatermark: "05",
+            stepOpening: "06",
+            stepYoutubeUpload: "07"
+        };
 
         function updateFontPreview() {
             subtitlePreview.style.fontFamily = `"${subtitleFont.value}", Arial, sans-serif`;
@@ -1815,11 +1929,11 @@ ${transcript}
             el.classList.remove("active", "done", "hold");
             
             const numEl = el.querySelector(".step-number");
-            const stepNumText = stepId === "renderStep" ? "03" : stepId.replace("step", "").padStart(2, "0");
+            const stepNumText = stepNumbers[stepId] || "00";
             
             if (state === "active") {
                 el.classList.add("active");
-                if (numEl) numEl.textContent = stepId === "renderStep" ? "03" : stepNumText;
+                if (numEl) numEl.textContent = stepNumText;
             } else if (state === "done") {
                 el.classList.add("done");
                 if (numEl) numEl.textContent = "✓";
@@ -1830,8 +1944,169 @@ ${transcript}
                 el.classList.add("hold");
                 if (numEl) numEl.textContent = "✗";
             } else {
-                if (numEl) numEl.textContent = stepId === "renderStep" ? "⏸" : stepNumText;
+                if (numEl) numEl.textContent = stepNumText;
             }
+        }
+
+        function populateYoutubeMetadata(metadata) {
+            if (!metadata) return;
+            
+            let payload = metadata;
+            if (metadata.render_payload) {
+                payload = metadata.render_payload;
+            }
+            
+            const ytMeta = metadata.youtube_metadata || (payload && payload.youtube_metadata) || {};
+            
+            const ytTitle = document.getElementById("ytTitle");
+            const ytDescription = document.getElementById("ytDescription");
+            const ytTags = document.getElementById("ytTags");
+            const ytPinnedComment = document.getElementById("ytPinnedComment");
+            const ytAudience = document.getElementById("ytAudience");
+            
+            let tagsStr = "";
+            if (ytMeta.youtube_tags) {
+                tagsStr = Array.isArray(ytMeta.youtube_tags) ? ytMeta.youtube_tags.join(", ") : ytMeta.youtube_tags;
+            }
+            
+            let descStr = ytMeta.description || "";
+            if (ytMeta.hashtags && Array.isArray(ytMeta.hashtags)) {
+                const hashtagsStr = ytMeta.hashtags.join(" ");
+                if (hashtagsStr && !descStr.includes(hashtagsStr)) {
+                    descStr += "\n\n" + hashtagsStr;
+                }
+            }
+            
+            ytTitle.value = ytMeta.title || (payload && payload.clip_type) || "Shorts Clip";
+            ytDescription.value = descStr;
+            ytTags.value = tagsStr;
+            ytPinnedComment.value = ytMeta.pinned_comment || "";
+            
+            if (ytAudience) {
+                ytAudience.value = ytMeta.audience_target === "kids" ? "made-for-kids" : "not-made-for-kids";
+            }
+            
+            const countSpan = document.getElementById("ytTitleCharCount");
+            if (countSpan) {
+                countSpan.textContent = `${ytTitle.value.length}/100`;
+            }
+        }
+
+        const ytTitleInput = document.getElementById("ytTitle");
+        const ytTitleCharCount = document.getElementById("ytTitleCharCount");
+        if (ytTitleInput && ytTitleCharCount) {
+            ytTitleInput.addEventListener("input", function() {
+                ytTitleCharCount.textContent = `${this.value.length}/100`;
+            });
+        }
+
+        function showYoutubeUploadSection(files, updateMetadata = true) {
+            if (!files || files.length === 0) {
+                showToast("Tidak ada file video untuk di-upload!");
+                return;
+            }
+            
+            const file = files.find(f => f.filename.endsWith(".mp4"));
+            if (!file) {
+                showToast("Tidak menemukan file video MP4!");
+                return;
+            }
+            
+            const videoUrl = API_BASE + file.url;
+            const previewEl = document.getElementById("finalVideoPreview");
+            previewEl.src = videoUrl;
+            
+            const sourceLabel = document.getElementById("videoSourceLabel");
+            sourceLabel.textContent = `Source: ${file.filename} (${formatFileSize(file.size)})`;
+            
+            if (updateMetadata) {
+                populateYoutubeMetadata(currentMetadataPayload);
+            }
+            
+            youtubeUploadPanel.style.display = "block";
+            if (updateMetadata) {
+                youtubeUploadPanel.scrollIntoView({ behavior: "smooth" });
+            }
+            
+            updateStepper("stepYoutubeUpload", "hold");
+        }
+
+
+
+        if (uploadToYoutubeBtn) {
+            uploadToYoutubeBtn.addEventListener("click", async () => {
+                if (!currentVideoId) {
+                    showToast("Video ID tidak ditemukan!");
+                    return;
+                }
+                
+                const ytTitle = document.getElementById("ytTitle").value.trim();
+                const ytDescription = document.getElementById("ytDescription").value.trim();
+                const ytTags = document.getElementById("ytTags").value.trim();
+                const ytPrivacy = document.getElementById("ytPrivacy").value;
+                const ytCategory = document.getElementById("ytCategory").value;
+                const ytAudience = document.getElementById("ytAudience").value;
+                const ytLanguage = document.getElementById("ytLanguage").value;
+                const ytPinnedComment = document.getElementById("ytPinnedComment").value.trim();
+                
+                if (!ytTitle) {
+                    showToast("Title wajib diisi!");
+                    return;
+                }
+                
+                uploadToYoutubeBtn.disabled = true;
+                uploadToYoutubeBtn.textContent = "Uploading to YouTube...";
+                
+                try {
+                    updateStepper("stepYoutubeUpload", "active");
+                    processBadge.textContent = "Uploading video to YouTube...";
+                    
+                    const uploadJob = await fetchApi("/jobs/steps/youtube_upload", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            source: currentVideoUrl,
+                            youtube_title: ytTitle,
+                            youtube_description: ytDescription,
+                            youtube_tags: ytTags,
+                            youtube_privacy: ytPrivacy,
+                            youtube_category: ytCategory,
+                            youtube_target_audience: ytAudience === "made-for-kids" ? "kids" : "not-kids",
+                            youtube_language: ytLanguage,
+                            youtube_pinned_comment: ytPinnedComment
+                        })
+                    });
+                    
+                    const upCompleted = await pollJobStatus(uploadJob.job_id, (job) => {
+                        processBadge.textContent = `YouTube Uploading: ${job.status}...`;
+                    });
+                    
+                    updateStepper("stepYoutubeUpload", "done");
+                    processBadge.textContent = "YouTube Upload completed successfully!";
+                    showToast("Video berhasil diupload ke YouTube!");
+                    
+                    const result = await fetchApi(`/jobs/${uploadJob.job_id}/result`);
+                    if (result.youtube_uploads && result.youtube_uploads.length > 0) {
+                        const uploadInfo = result.youtube_uploads[0];
+                        if (uploadInfo.upload_url) {
+                            logToConsole(`YouTube Upload URL: ${uploadInfo.upload_url}`, "system");
+                            renderCompletedClips(result.files, uploadInfo.upload_url);
+                        } else {
+                            renderCompletedClips(result.files);
+                        }
+                    } else {
+                        renderCompletedClips(result.files);
+                    }
+                    
+                } catch (err) {
+                    console.error(err);
+                    processBadge.textContent = `YouTube Upload failed: ${err.message}`;
+                    showToast(`Upload Gagal: ${err.message}`);
+                    updateStepper("stepYoutubeUpload", "failed");
+                } finally {
+                    uploadToYoutubeBtn.disabled = false;
+                    uploadToYoutubeBtn.textContent = "Confirm & Upload to YouTube";
+                }
+            });
         }
 
         subtitleFont.addEventListener("change", updateFontPreview);
@@ -1859,8 +2134,54 @@ ${transcript}
             updateStepper("stepSubtitle", "waiting");
             updateStepper("stepWatermark", "waiting");
             updateStepper("stepOpening", "waiting");
+            updateStepper("stepYoutubeUpload", "waiting");
+            if (youtubeUploadPanel) youtubeUploadPanel.style.display = "none";
             
             try {
+                // Check cache first
+                const videoIdMatch = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11}).*/);
+                const parsedVideoId = videoIdMatch ? videoIdMatch[1] : null;
+
+                if (parsedVideoId) {
+                    try {
+                        submitUrlBtn.textContent = "Checking cache...";
+                        const status = await fetchApi(`/videos/${parsedVideoId}/status`);
+                        if (status.has_watermark && status.metadata && status.metadata.render_payload && status.metadata.render_payload.youtube_metadata) {
+                            currentVideoId = parsedVideoId;
+                            currentVideoUrl = url;
+                            currentMetadataPayload = status.metadata;
+                            
+                            showToast("Video sudah diproses sebelumnya. Langsung masuk ke step YouTube Upload.");
+                            
+                            // Mark steps as done or skipped
+                            updateStepper("stepDownload", "done");
+                            updateStepper("stepTranscript", "done");
+                            updateStepper("renderStep", "done");
+                            updateStepper("stepSubtitle", "done");
+                            updateStepper("stepWatermark", "done");
+                            updateStepper("stepOpening", "done"); // Skipping opening narration for cached videos
+                            
+                            renderCompletedClips(status.files);
+                            showYoutubeUploadSection(status.files, true);
+                            
+                            // Ensure upload button is enabled
+                            const uploadBtn = document.getElementById("uploadToYoutubeBtn");
+                            if (uploadBtn) {
+                                uploadBtn.disabled = false;
+                                uploadBtn.textContent = "Confirm & Upload to YouTube";
+                                uploadBtn.style.opacity = "1";
+                                uploadBtn.style.cursor = "pointer";
+                            }
+                            
+                            submitUrlBtn.disabled = false;
+                            submitUrlBtn.textContent = "Get free clips";
+                            return; // Exit out of handleUrlSubmission so it doesn't do download!
+                        }
+                    } catch(e) {
+                        console.log("Not cached or error checking status:", e);
+                    }
+                }
+
                 // 1. Download
                 updateStepper("stepDownload", "active");
                 processBadge.textContent = "Downloading source video...";
@@ -2030,6 +2351,7 @@ ${transcript}
             renderButton.textContent = `Rendering ${index + 1}/${metadataQueue.length}...`;
 
             const metadataPayload = await readJSONFile(item.file);
+            currentMetadataPayload = metadataPayload;
             
             // Support both flat structures and nested structures (under render_payload)
             let actualPayload = metadataPayload;
@@ -2098,6 +2420,9 @@ ${transcript}
             
             // Track last job ID to fetch files
             lastRenderJobId = watermarkJob.job_id;
+            
+            // Prepare YouTube metadata in form if we finish rendering
+            populateYoutubeMetadata(currentMetadataPayload);
         }
 
         async function renderAllMetadataSynchronously() {
@@ -2139,6 +2464,27 @@ ${transcript}
                 openingPanel.scrollIntoView({ behavior: "smooth" });
                 updateStepper("stepOpening", "hold");
                 toggleOpeningControls(true);
+                
+                // Fetch draft watermarked files and show Youtube Draft Panel
+                if (lastRenderJobId) {
+                    fetchApi(`/jobs/${lastRenderJobId}/result`).then(result => {
+                        if (result && result.files && result.files.length > 0) {
+                            renderCompletedClips(result.files);
+                            showYoutubeUploadSection(result.files, true);
+                            
+                            // Disable upload until Step 6 is done
+                            const uploadToYoutubeBtn = document.getElementById("uploadToYoutubeBtn");
+                            if (uploadToYoutubeBtn) {
+                                uploadToYoutubeBtn.disabled = true;
+                                uploadToYoutubeBtn.textContent = "Selesaikan Step 6 Terlebih Dahulu";
+                                uploadToYoutubeBtn.style.opacity = "0.5";
+                                uploadToYoutubeBtn.style.cursor = "not-allowed";
+                            }
+                        }
+                    }).catch(err => {
+                        console.error("Gagal mengambil hasil watermark untuk draft:", err);
+                    });
+                }
             }
         }
 
@@ -2252,12 +2598,24 @@ ${transcript}
                 });
                 
                 updateStepper("stepOpening", "done");
-                processBadge.textContent = "Pipeline completed successfully!";
+                processBadge.textContent = "Opening narration completed!";
                 showToast("Opening Narration berhasil ditambahkan!");
                 
                 // Fetch final results from opening job
                 const result = await fetchApi(`/jobs/${openingJob.job_id}/result`);
                 renderCompletedClips(result.files);
+                
+                // Update youtube upload panel video, but DO NOT overwrite metadata
+                showYoutubeUploadSection(result.files, false);
+                
+                // Enable upload button
+                const uploadToYoutubeBtn = document.getElementById("uploadToYoutubeBtn");
+                if (uploadToYoutubeBtn) {
+                    uploadToYoutubeBtn.disabled = false;
+                    uploadToYoutubeBtn.textContent = "Confirm & Upload to YouTube";
+                    uploadToYoutubeBtn.style.opacity = "1";
+                    uploadToYoutubeBtn.style.cursor = "pointer";
+                }
                 
             } catch (err) {
                 console.error(err);
@@ -2270,27 +2628,43 @@ ${transcript}
             }
         });
 
-        function renderCompletedClips(files) {
+        function renderCompletedClips(files, youtubeUrl = null) {
             resultsList.innerHTML = "";
             
-            if (!files || files.length === 0) {
+            if ((!files || files.length === 0) && !youtubeUrl) {
                 resultsList.innerHTML = `<div style="color: #8b8b8b; font-size: 13px; text-align: center; padding: 12px;">No output files found.</div>`;
             } else {
-                files.forEach(file => {
-                    const row = document.createElement("div");
-                    row.className = "metadata-item";
-                    row.style.background = "#0e1610";
-                    row.style.borderColor = "#1c3c24";
-                    
-                    row.innerHTML = `
-                        <div>
-                            <div class="metadata-file-name" style="color: #a4e6b5;">${file.filename}</div>
-                            <div class="metadata-file-size" style="color: #639371;">Ready for distribution</div>
-                        </div>
-                        <a href="${API_BASE}${file.url}" target="_blank" class="primary-btn" style="height: 34px; min-width: 90px; font-size: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; background: #8dffb7; color: #000; border-radius: 999px;">Download</a>
-                    `;
-                    resultsList.appendChild(row);
-                });
+                if (files) {
+                    files.forEach(file => {
+                        const row = document.createElement("div");
+                        row.className = "metadata-item";
+                        row.style.background = "#0e1610";
+                        row.style.borderColor = "#1c3c24";
+                        
+                        let buttonsHtml = `<a href="${API_BASE}${file.url}" target="_blank" class="primary-btn" style="height: 34px; min-width: 90px; font-size: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; background: #8dffb7; color: #000; border-radius: 999px;">Download</a>`;
+                        
+                        if (youtubeUrl && file.filename.endsWith(".mp4")) {
+                            buttonsHtml = `
+                                <div style="display: flex; gap: 8px;">
+                                    <a href="${youtubeUrl}" target="_blank" class="secondary-btn" style="height: 34px; min-width: 110px; font-size: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid #ff0055; background: rgba(255,0,85,0.1); color: #ff3366; border-radius: 999px; gap: 4px;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.545 12 3.545 12 3.545s-7.518 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.87.508 9.388.508 9.388.508s7.518 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                                        YouTube
+                                    </a>
+                                    ${buttonsHtml}
+                                </div>
+                            `;
+                        }
+                        
+                        row.innerHTML = `
+                            <div>
+                                <div class="metadata-file-name" style="color: #a4e6b5;">${file.filename}</div>
+                                <div class="metadata-file-size" style="color: #639371;">Ready for distribution</div>
+                            </div>
+                            ${buttonsHtml}
+                        `;
+                        resultsList.appendChild(row);
+                    });
+                }
             }
             resultsPanel.style.display = "block";
             resultsPanel.scrollIntoView({ behavior: "smooth" });

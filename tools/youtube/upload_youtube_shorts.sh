@@ -5,7 +5,7 @@ SCRIPT_NAME="$(basename "$0")"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Where content-short stores rendered results
-DEFAULT_BASE_DIR="$SCRIPT_DIR/storage/free-viral-shorts"
+DEFAULT_BASE_DIR="$SCRIPT_DIR/../../storage/free-viral-shorts"
 
 BASE_DIR="${BASE_DIR:-$DEFAULT_BASE_DIR}"
 
@@ -35,6 +35,8 @@ SOURCE_CREDIT=""
 
 LOG_LEVEL="INFO"
 DRY_RUN=0
+USE_WATERMARKED=0
+
 
 log() { printf '[upload_youtube_shorts] %s\n' "$*" >&2; }
 die() { printf '[upload_youtube_shorts] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -69,6 +71,7 @@ Options:
   --content-warning TEXT        Appended to description metadata
   --source-credit TEXT          Appended to description metadata
 
+  --use-watermarked              Upload watermarked video files (*_wm.mp4) from the watermarked directory
   --dry-run                      Don't upload; just print what would be uploaded
   -h, --help
 
@@ -202,6 +205,10 @@ parse_args() {
         SOURCE_CREDIT="$2"
         shift 2
         ;;
+      --use-watermarked)
+        USE_WATERMARKED=1
+        shift
+        ;;
       --dry-run)
         DRY_RUN=1
         shift
@@ -221,28 +228,28 @@ parse_args() {
 
 resolve_run_dir() {
   local v="$1"
-  # If it's already an absolute/relative path containing result.json, use it.
+  # If it's already an absolute/relative path containing result.json or render_payload.json, use it.
   if [[ "$v" == /* || "$v" == ./
         || "$v" == ../* ]]; then
-    if [ -f "$v/result.json" ]; then
+    if [ -f "$v/result.json" ] || [ -f "$v/render_payload.json" ]; then
       printf '%s\n' "$(cd "$(dirname "$v")" && pwd)/$(basename "$v")"
       return
     fi
   fi
 
   # Otherwise assume it's a video id under BASE_DIR
-  if [ -f "$BASE_DIR/$v/result.json" ]; then
+  if [ -f "$BASE_DIR/$v/result.json" ] || [ -f "$BASE_DIR/$v/render_payload.json" ]; then
     printf '%s\n' "${BASE_DIR}/$v"
     return
   fi
 
   # Also allow passing full path under BASE_DIR
-  if [ -f "$BASE_DIR/$v/result.json" ]; then
+  if [ -f "$BASE_DIR/$v/result.json" ] || [ -f "$BASE_DIR/$v/render_payload.json" ]; then
     printf '%s\n' "${BASE_DIR}/$v"
     return
   fi
 
-  die "Cannot resolve run dir. Expected $BASE_DIR/<VIDEO_ID>/result.json for: $v"
+  die "Cannot resolve run dir. Expected $BASE_DIR/<VIDEO_ID>/result.json or render_payload.json for: $v"
 }
 
 upload_all_shorts() {
@@ -259,8 +266,14 @@ upload_all_shorts() {
 
   # Collect shorts files (bash 3.2 on macOS doesn't always support mapfile/process substitution reliably)
   local files
-  files="$(ls -1 "$shots_dir"/short_*.mp4 2>/dev/null | sort || true)"
-  [ -n "$files" ] || die "No shorts found in $shots_dir (short_*.mp4)"
+  if [ "${USE_WATERMARKED:-0}" -eq 1 ]; then
+    local watermarked_dir="$run_dir/watermarked"
+    files="$(ls -1 "$watermarked_dir"/*_wm.mp4 2>/dev/null | grep -v "_telegram" | sort || true)"
+    [ -n "$files" ] || die "No watermarked shorts found in $watermarked_dir (*_wm.mp4)"
+  else
+    files="$(ls -1 "$shots_dir"/short_*.mp4 2>/dev/null | sort || true)"
+    [ -n "$files" ] || die "No shorts found in $shots_dir (short_*.mp4)"
+  fi
 
 
   log "Uploading shorts for run: $run_dir"
@@ -269,7 +282,7 @@ upload_all_shorts() {
   # Metadata resolution strategy:
   # - If user provided --title/--description/tags/privacy/thumbnail, apply to all shorts.
   # - Else, try to use moments.md for per-clip title/hook (best-effort).
-  "$py_bin" - "$run_dir" "$video_id" "$shots_dir" "$DRY_RUN" "$TITLE" "$DESCRIPTION" "$TAGS" "$PRIVACY" "$THUMBNAIL" "$SCRIPT_DIR" "$DOWNLOAD_CLIP_DIR" "$CATEGORY" "$LANGUAGE" "$HASHTAGS" "$PINNED_COMMENT" "$TARGET_AUDIENCE" "$CONTENT_WARNING" "$SOURCE_CREDIT" "$VIDEO_FILE" <<'PY'
+  "$py_bin" - "$run_dir" "$video_id" "$shots_dir" "$DRY_RUN" "$TITLE" "$DESCRIPTION" "$TAGS" "$PRIVACY" "$THUMBNAIL" "$SCRIPT_DIR" "$DOWNLOAD_CLIP_DIR" "$CATEGORY" "$LANGUAGE" "$HASHTAGS" "$PINNED_COMMENT" "$TARGET_AUDIENCE" "$CONTENT_WARNING" "$SOURCE_CREDIT" "$VIDEO_FILE" "${USE_WATERMARKED:-0}" <<'PY'
 import os, re, json, sys, glob
 from pathlib import Path
 
@@ -292,6 +305,7 @@ TARGET_AUDIENCE = sys.argv[16]
 CONTENT_WARNING = sys.argv[17]
 SOURCE_CREDIT = sys.argv[18]
 VIDEO_FILE = sys.argv[19]
+USE_WATERMARKED = sys.argv[20] == '1'
 
 # Direct uploader (independent dari download-clip OAuth path)
 # Pakai token.json yang ada di content-short ini.
@@ -503,9 +517,14 @@ if VIDEO_FILE.strip():
         raise SystemExit(f'Video file not found: {candidate}')
     files = [str(candidate)]
 else:
-    files = sorted(glob.glob(str(shots_dir / 'short_*.mp4')))
+    if USE_WATERMARKED:
+        watermarked_dir = run_dir / "watermarked"
+        files = sorted(glob.glob(str(watermarked_dir / '*_wm.mp4')))
+        files = [f for f in files if "_telegram" not in Path(f).stem]
+    else:
+        files = sorted(glob.glob(str(shots_dir / 'short_*.mp4')))
 if not files:
-    raise SystemExit(f'No shorts found in {shots_dir}')
+    raise SystemExit(f'No video files found for upload')
 
 # Prepare common description
 common_desc = DESCRIPTION or ''

@@ -56,6 +56,8 @@ OPENING_REVIEW_GATE=0
 OPENING_BGM_REVIEW_GATE=0
 TRANSCRIPT_REVIEW_GATE=0
 SUBTITLE_FONT_NAME=""
+WHISPER_MODEL="${WHISPER_MODEL:-small}"
+WHISPER_PRESET="${WHISPER_PRESET:-fast}"
 SOURCES=()
 
 log() {
@@ -363,6 +365,16 @@ parse_args() {
         ;;
       --opening-voice|--opening-rate|--opening-pitch)
         [ "$#" -ge 2 ] || die "Missing value for $1"
+        shift 2
+        ;;
+      --whisper-model)
+        [ "$#" -ge 2 ] || die "Missing value for $1"
+        WHISPER_MODEL="$2"
+        shift 2
+        ;;
+      --whisper-preset)
+        [ "$#" -ge 2 ] || die "Missing value for $1"
+        WHISPER_PRESET="$2"
         shift 2
         ;;
       -h|--help)
@@ -1199,7 +1211,7 @@ process_source() {
   mkdir -p "$run_dir"
 
 if [ "$SKIP_RENDER" = "0" ]; then
-    total_steps=6
+    total_steps=7
   else
     total_steps=4
   fi
@@ -1220,6 +1232,37 @@ if [ "$SKIP_RENDER" = "0" ]; then
     write_loading_state "$run_dir" "$video_id" "running" 4 "$total_steps" "Rendering shorts" "Cropping without subtitle (fast)"
     render_shorts "$result_json" "$video_file" "$run_dir"
     
+    # 1. Generate full video word timestamps once
+    local full_timestamps_file="$run_dir/full_word_timestamps.json"
+    if [ ! -f "$full_timestamps_file" ]; then
+      local sub_python
+      sub_python="$(choose_cv_python)"
+      local ffmpeg_bin
+      ffmpeg_bin="$(choose_ffmpeg)"
+      local ffmpeg_dir
+      ffmpeg_dir="$(dirname "$ffmpeg_bin")"
+      
+      write_loading_state "$run_dir" "$video_id" "running" 5 "$total_steps" "Transcribing full video" "Generating cached word timestamps for all clips"
+      
+      local first_lang="${LANGUAGES%%,*}"
+      [ -n "$first_lang" ] || first_lang="id"
+      local tmp_audio="$run_dir/full_audio.wav"
+      
+      PATH="$ffmpeg_dir:$PATH" "$sub_python" "$REPO_ROOT/external_packages/auto-captions/caption_generator.py" \
+        -i "$video_file" \
+        -a "$tmp_audio" \
+        -o "$full_timestamps_file" \
+        -m "$WHISPER_MODEL" \
+        -l "$first_lang" \
+        --preset "$WHISPER_PRESET"
+        
+      if [ -f "$tmp_audio" ]; then
+        rm "$tmp_audio"
+      fi
+    else
+      log "Reusing cached full word timestamps: $full_timestamps_file"
+    fi
+    
     # Re-enabled subtitle generation loop
     local idx=1
     local first_lang="${LANGUAGES%%,*}"
@@ -1238,10 +1281,16 @@ if [ "$SKIP_RENDER" = "0" ]; then
         break
       fi
       
-      write_loading_state "$run_dir" "$video_id" "running" 5 "$total_steps" "Generating subtitles" "Transcribing short ${formatted_idx}"
+      write_loading_state "$run_dir" "$video_id" "running" 6 "$total_steps" "Generating subtitles" "Processing short ${formatted_idx}"
       
       local sub_python
       sub_python="$(choose_cv_python)"
+      
+      # Extract clip range from result.json
+      local clip_start
+      clip_start=$("$sub_python" -c "import json; d=json.load(open('$run_dir/result.json')); print(d['highlights'][$((idx - 1))]['start_time'])")
+      local clip_end
+      clip_end=$("$sub_python" -c "import json; d=json.load(open('$run_dir/result.json')); print(d['highlights'][$((idx - 1))]['end_time'])")
       
       if [ -n "$SUBTITLE_FONT_NAME" ]; then
         PATH="$ffmpeg_dir:$PATH" "$sub_python" "$REPO_ROOT/scripts/generate_subtitle.py" \
@@ -1250,14 +1299,20 @@ if [ "$SKIP_RENDER" = "0" ]; then
           --engine "auto-captions" \
           --burn true \
           --replace-original \
-          --style "$SUBTITLE_FONT_NAME"
+          --style "$SUBTITLE_FONT_NAME" \
+          --full-word-timestamps "$full_timestamps_file" \
+          --clip-start "$clip_start" \
+          --clip-end "$clip_end"
       else
         PATH="$ffmpeg_dir:$PATH" "$sub_python" "$REPO_ROOT/scripts/generate_subtitle.py" \
           --video "$clip_file" \
           --language "$first_lang" \
           --engine "auto-captions" \
           --burn true \
-          --replace-original
+          --replace-original \
+          --full-word-timestamps "$full_timestamps_file" \
+          --clip-start "$clip_start" \
+          --clip-end "$clip_end"
       fi
       
       idx=$((idx + 1))
